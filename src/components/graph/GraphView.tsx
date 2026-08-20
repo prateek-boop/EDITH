@@ -1,7 +1,8 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls, Sparkles } from '@react-three/drei'
-import { Search, SlidersHorizontal, RotateCcw, Crosshair, GitBranch, Box, FileCode2, Brain, Target, Workflow, Pause, Play, Radio } from 'lucide-react'
-import { type ReactNode, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
+import { Html, OrbitControls } from '@react-three/drei'
+import { Search, SlidersHorizontal, RotateCcw, Crosshair, GitBranch, Box, FileCode2, Brain, Target, Workflow, Pause, Play } from 'lucide-react'
+import { useReducedMotion } from 'framer-motion'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useEdithStore } from '../../store/useEdithStore'
 import type { GraphNodeKind, GraphRelation, WorkspaceGraphEdge, WorkspaceGraphNode } from '../../lib/types'
@@ -14,27 +15,27 @@ const hash=(text:string)=>{
   return Math.abs(h)
 }
 
-function buildLayout(nodes:WorkspaceGraphNode[], edges:WorkspaceGraphEdge[], goal:string, action:string, activeFiles:string[]){
-  const capped=nodes.slice(0,72)
+function buildLayout(nodes:WorkspaceGraphNode[], edges:WorkspaceGraphEdge[], goal:string, activeFiles:string[]){
+  const capped=nodes.slice(0,48)
   const clusters=Array.from(new Set(capped.map((n)=>n.cluster))).slice(0,9)
   const clusterCounts=new Map<string,number>()
-  const positioned:PositionedNode[]=capped.map((node,index)=>{
+  const positioned:PositionedNode[]=capped.map((node)=>{
     const ci=Math.max(0,clusters.indexOf(node.cluster))
     const clusterAngle=(ci/Math.max(clusters.length,1))*Math.PI*2-.4
     const clusterCenter=new THREE.Vector3(
-      Math.cos(clusterAngle)*2.25,
-      Math.sin(clusterAngle)*1.30,
-      Math.sin(clusterAngle*1.42)*.72,
+      Math.cos(clusterAngle)*2.18,
+      Math.sin(clusterAngle)*1.34,
+      0,
     )
     const localIndex=clusterCounts.get(node.cluster)||0
     clusterCounts.set(node.cluster,localIndex+1)
     const h=hash(node.id)
     const localAngle=(localIndex*.92)+((h%100)/100)*.42
-    const localRadius=node.kind==='folder'?.28:.46+Math.min(localIndex,6)*.075
+    const localRadius=node.kind==='folder'?.18:.30+Math.min(localIndex,6)*.075
     const jitter=new THREE.Vector3(
       Math.cos(localAngle)*localRadius,
       Math.sin(localAngle)*localRadius*.82,
-      ((((h>>9)%100)/100)-.5)*.72,
+      0,
     )
     if(node.kind==='folder')clusterCenter.multiplyScalar(.86)
     const p=clusterCenter.add(jitter)
@@ -43,67 +44,102 @@ function buildLayout(nodes:WorkspaceGraphNode[], edges:WorkspaceGraphEdge[], goa
 
   const activeCandidates=activeFiles.map((p)=>positioned.find((n)=>n.path===p||n.id===p)).filter(Boolean) as PositionedNode[]
   const anchors=activeCandidates.length?activeCandidates:positioned.filter((n)=>n.kind==='file').slice(0,4)
-  const extras:PositionedNode[]=[
-    {id:'__goal__',label:goal||'EDITH',kind:'goal',cluster:'EDITH',weight:6,position:[0,.08,.25]},
-    {id:'__task__',label:action&&goal?action:'Current task',kind:'task',cluster:'EDITH',weight:4,position:[-.72,-.72,.10]},
-    {id:'__memory__',label:'Workspace memory',kind:'memory',cluster:'EDITH',weight:4,position:[.78,-.66,-.12]},
-  ]
+  const extras:PositionedNode[]=[{id:'__goal__',label:goal||'EDITH',kind:'goal',cluster:'EDITH',weight:6,position:[0,0,0]}]
   const extraEdges:WorkspaceGraphEdge[]=[
-    {id:'goal-task',source:'__goal__',target:'__task__',relation:'related_to'},
-    {id:'goal-memory',source:'__goal__',target:'__memory__',relation:'used_by'},
-    ...anchors.slice(0,7).map((n,i)=>({id:`goal-active-${i}`,source:'__goal__',target:n.id,relation:'related_to' as const})),
+    ...anchors.slice(0,5).map((n,i)=>({id:`goal-active-${i}`,source:'__goal__',target:n.id,relation:'related_to' as const})),
   ]
   return {nodes:[...positioned,...extras],edges:[...edges.slice(0,130),...extraEdges]}
 }
 
-function NodeHalo({selected,active}:{selected:boolean;active:boolean}){
+function NodeHalo({selected,active,motionEnabled}:{selected:boolean;active:boolean;motionEnabled:boolean}){
   const ref=useRef<THREE.Group>(null)
   useFrame(({clock},delta)=>{
     if(!ref.current)return
-    ref.current.rotation.y+=delta*(selected?.45:.16)
-    ref.current.rotation.x-=delta*(selected?.18:.06)
-    ref.current.scale.setScalar(1+Math.sin(clock.getElapsedTime()*1.6)*.035)
+    if(motionEnabled){
+      ref.current.rotation.z+=delta*(selected?.36:.12)
+      ref.current.scale.setScalar(1+Math.sin(clock.getElapsedTime()*1.4)*.025)
+    }
   })
   if(!selected&&!active)return null
   return <group ref={ref}>
-    <mesh rotation={[Math.PI/2,0,0]}><torusGeometry args={[.225,.006,8,72]}/><meshBasicMaterial color={selected?'#ff4540':'#ffffff'} transparent opacity={selected?.42:.15}/></mesh>
-    <mesh rotation={[0,.8,.5]}><torusGeometry args={[.285,.0035,8,72]}/><meshBasicMaterial color="#ff3b36" transparent opacity={selected?.22:.10}/></mesh>
+    <mesh><ringGeometry args={[.19,.198,64]}/><meshBasicMaterial color={selected?'#ef3439':'#b9bbc2'} transparent opacity={selected?.52:.18} side={THREE.DoubleSide}/></mesh>
   </group>
 }
 
-function GraphNode({node,selected,hovered,onSelect,onHover,dim,active}:{node:PositionedNode;selected:boolean;hovered:boolean;onSelect:()=>void;onHover:(v:boolean)=>void;dim:boolean;active:boolean}){
+function GraphNode({node,selected,hovered,onSelect,onHover,onMove,onDragChange,dim,active,motionEnabled}:{node:PositionedNode;selected:boolean;hovered:boolean;onSelect:()=>void;onHover:(v:boolean)=>void;onMove:(position:[number,number,number])=>void;onDragChange:(dragging:boolean)=>void;dim:boolean;active:boolean;motionEnabled:boolean}){
   const group=useRef<THREE.Group>(null)
-  const inner=useRef<THREE.Mesh>(null)
+  const dragging=useRef(false)
+  const dragged=useRef(false)
+  const base=useRef(new THREE.Vector3(...node.position))
+  const dragStart=useRef(new THREE.Vector3())
+  const plane=useMemo(()=>new THREE.Plane(),[])
+  const worldPoint=useMemo(()=>new THREE.Vector3(),[])
+  const planeNormal=useMemo(()=>new THREE.Vector3(0,0,1),[])
+  const {camera,pointer,raycaster}=useThree()
   const isGoal=node.kind==='goal'
+
+  useEffect(()=>{if(!dragging.current)base.current.set(...node.position)},[node.position])
+
   useFrame(({clock})=>{
     if(!group.current)return
+    if(dragging.current&&group.current.parent){
+      plane.set(planeNormal,0).applyMatrix4(group.current.parent.matrixWorld)
+      raycaster.setFromCamera(pointer,camera)
+      if(raycaster.ray.intersectPlane(plane,worldPoint)){
+        const local=group.current.parent.worldToLocal(worldPoint.clone())
+        local.z=0
+        if(local.distanceTo(dragStart.current)>.025)dragged.current=true
+        base.current.copy(local)
+        group.current.position.copy(local)
+        onMove([local.x,local.y,0])
+      }
+      return
+    }
     const t=clock.getElapsedTime()
     const target=selected?1.40:hovered?1.22:active?1.12:1
+    if(!motionEnabled){
+      group.current.scale.setScalar(target)
+      group.current.position.set(base.current.x,base.current.y,base.current.z)
+      return
+    }
     const s=THREE.MathUtils.lerp(group.current.scale.x,target,.10)
     group.current.scale.setScalar(s)
-    group.current.position.y=node.position[1]+Math.sin(t*.42+(hash(node.id)%37))*0.018
-    if(inner.current)inner.current.rotation.y=t*(isGoal?.18:.07)
+    group.current.position.x=base.current.x
+    group.current.position.y=base.current.y+Math.sin(t*.42+(hash(node.id)%37))*0.018
   })
 
   const hot=selected||hovered||active||isGoal
-  const glassOpacity=dim&&!hot?.08:isGoal?.62:.34
-  const coreColor=isGoal?'#ff3b36':hot?'#ff4641':node.kind==='folder'?'#b7b7bb':node.kind==='memory'?'#d3d3d6':'#eeeeef'
-  const shellScale=isGoal?.25:node.kind==='folder'?.16:.12
-  const innerScale=isGoal?.105:node.kind==='folder'?.068:.052
+  const nodeColor=isGoal?'#e1262d':hot?'#eeeeef':node.kind==='folder'?'#9b9da4':'#747780'
+  const opacity=dim&&!hot?.13:1
+  const radius=isGoal?.115:node.kind==='folder'?.075:.048
+  const startDrag=(event:ThreeEvent<PointerEvent>)=>{
+    event.stopPropagation()
+    dragging.current=true
+    dragged.current=false
+    dragStart.current.copy(base.current)
+    ;(event.nativeEvent.target as HTMLElement).setPointerCapture(event.pointerId)
+    onDragChange(true)
+  }
+  const stopDrag=(event:ThreeEvent<PointerEvent>)=>{
+    event.stopPropagation()
+    dragging.current=false
+    ;(event.nativeEvent.target as HTMLElement).releasePointerCapture(event.pointerId)
+    onDragChange(false)
+  }
 
   return <group ref={group} position={node.position}>
-    <NodeHalo selected={selected} active={active||isGoal}/>
-    {isGoal&&<mesh scale={1.65}><sphereGeometry args={[.20,32,32]}/><meshBasicMaterial color="#ff2b2b" transparent opacity={.035} depthWrite={false}/></mesh>}
-    <mesh onClick={(e)=>{e.stopPropagation();onSelect()}} onPointerOver={(e)=>{e.stopPropagation();onHover(true)}} onPointerOut={()=>onHover(false)}>
-      <sphereGeometry args={[shellScale,32,32]}/>
-      <meshPhysicalMaterial color="#f5f5f5" metalness={.05} roughness={.08} clearcoat={1} clearcoatRoughness={.03} transmission={.18} thickness={.45} transparent opacity={glassOpacity} depthWrite={!dim}/>
+    <NodeHalo selected={selected} active={active} motionEnabled={motionEnabled}/>
+    {isGoal&&<mesh scale={2.4}><sphereGeometry args={[radius,24,24]}/><meshBasicMaterial color="#d51f25" transparent opacity={.055} depthWrite={false}/></mesh>}
+    <mesh>
+      <sphereGeometry args={[radius,20,20]}/>
+      <meshBasicMaterial color={nodeColor} transparent opacity={opacity}/>
     </mesh>
-    <mesh ref={inner}>
-      <sphereGeometry args={[innerScale,24,24]}/>
-      <meshPhysicalMaterial color={coreColor} emissive={hot?'#651215':'#111113'} emissiveIntensity={hot?.42:.05} metalness={.62} roughness={.20} clearcoat={.72}/>
+    <mesh onPointerDown={startDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag} onClick={(event)=>{event.stopPropagation();if(dragged.current){dragged.current=false;return}onSelect()}} onPointerOver={(event)=>{event.stopPropagation();onHover(true)}} onPointerOut={()=>{if(!dragging.current)onHover(false)}}>
+      <sphereGeometry args={[Math.max(radius*2.2,.13),16,16]}/>
+      <meshBasicMaterial transparent opacity={0} depthWrite={false}/>
     </mesh>
-    {(selected||hovered||active||isGoal)&&<Html position={[0,isGoal?.37:.26,0]} center distanceFactor={7.4}>
-      <span className={`graph-node-label ${selected?'selected':''}`}><i data-kind={node.kind}/>{node.label}</span>
+    {!dim&&<Html position={[0,radius+.10,0]} center>
+      <span className={`graph-node-label ${selected?'selected':hovered?'hovered':'quiet'}`}><i data-kind={node.kind}/>{node.label}</span>
     </Html>}
   </group>
 }
@@ -113,69 +149,49 @@ function buildCurve(a:PositionedNode,b:PositionedNode,index:number){
   const end=new THREE.Vector3(...b.position)
   const mid=start.clone().add(end).multiplyScalar(.5)
   const delta=end.clone().sub(start)
-  const perpendicular=new THREE.Vector3(-delta.y,delta.x,.2).normalize().multiplyScalar(.08+((hash(`${a.id}:${b.id}:${index}`)%100)/100)*.16)
+  const perpendicular=new THREE.Vector3(-delta.y,delta.x,0).normalize().multiplyScalar(.025+((hash(`${a.id}:${b.id}:${index}`)%100)/100)*.055)
   mid.add(perpendicular)
-  mid.z+=.05+((index%4)-1.5)*.025
+  mid.z=-.01
   return new THREE.QuadraticBezierCurve3(start,mid,end)
 }
 
-function Edge({a,b,edge,hot,dim,index}:{a:PositionedNode;b:PositionedNode;edge:WorkspaceGraphEdge;hot:boolean;dim:boolean;index:number}){
+function Edge({a,b,edge,hot,dim,index,motionEnabled}:{a:PositionedNode;b:PositionedNode;edge:WorkspaceGraphEdge;hot:boolean;dim:boolean;index:number;motionEnabled:boolean}){
   const curve=useMemo(()=>buildCurve(a,b,index),[a,b,index])
   const pulse=useRef<THREE.Mesh>(null)
   useFrame(({clock})=>{
-    if(!pulse.current)return
+    if(!pulse.current||!motionEnabled)return
     pulse.current.position.copy(curve.getPointAt((clock.getElapsedTime()*(hot?.16:.055)+index*.071)%1))
   })
   return <>
     <mesh>
-      <tubeGeometry args={[curve,28,hot?.006:.0038,6,false]}/>
-      <meshBasicMaterial color={hot?'#ff4540':'#d8d8dc'} transparent opacity={dim?.018:hot?.34:.075}/>
+      <tubeGeometry args={[curve,18,hot?.0038:.0017,4,false]}/>
+      <meshBasicMaterial color={hot?'#d92b31':'#777980'} transparent opacity={dim?.015:hot?.62:.18}/>
     </mesh>
-    {hot&&!dim&&<mesh ref={pulse}>
+    {hot&&!dim&&motionEnabled&&<mesh ref={pulse}>
       <sphereGeometry args={[.022,10,10]}/><meshBasicMaterial color="#ff5a55"/>
     </mesh>}
   </>
 }
 
-function SceneMotion({enabled,children}:{enabled:boolean;children:ReactNode}){
+function CursorRig({children,motionEnabled}:{children:ReactNode;motionEnabled:boolean}){
   const ref=useRef<THREE.Group>(null)
-  useFrame(({clock},delta)=>{
+  useFrame(({pointer})=>{
     if(!ref.current)return
-    if(enabled)ref.current.rotation.y+=delta*.010
-    ref.current.rotation.x=Math.sin(clock.getElapsedTime()*.10)*.018
-    const s=1+Math.sin(clock.getElapsedTime()*.24)*.003
-    ref.current.scale.setScalar(s)
+    if(!motionEnabled)return
+    const x=-pointer.y*.075
+    const y=pointer.x*.095
+    ref.current.rotation.x=THREE.MathUtils.lerp(ref.current.rotation.x,x,.055)
+    ref.current.rotation.y=THREE.MathUtils.lerp(ref.current.rotation.y,y,.055)
   })
   return <group ref={ref}>{children}</group>
 }
 
-function CameraController({focusPosition,focusNonce}:{focusPosition?:[number,number,number];focusNonce:number}){
-  const {camera}=useThree()
-  const last=useRef(focusNonce)
-  const target=useRef<THREE.Vector3|null>(null)
-  const look=useRef(new THREE.Vector3())
-  useFrame(()=>{
-    if(focusPosition&&last.current!==focusNonce){
-      last.current=focusNonce
-      look.current.set(...focusPosition)
-      target.current=new THREE.Vector3(...focusPosition).add(new THREE.Vector3(0,0,2.7))
-    }
-    if(target.current){
-      camera.position.lerp(target.current,.065)
-      camera.lookAt(look.current)
-      if(camera.position.distanceTo(target.current)<.04)target.current=null
-    }
-  })
-  return null
-}
-
-function Scene({nodes,edges,selected,setSelected,hovered,setHovered,focusWorking,query,relation,motionEnabled,focusNonce}:{nodes:PositionedNode[];edges:WorkspaceGraphEdge[];selected:string|null;setSelected:(v:string)=>void;hovered:string|null;setHovered:(v:string|null)=>void;focusWorking:boolean;query:string;relation:'all'|GraphRelation;motionEnabled:boolean;focusNonce:number}){
+function Scene({nodes,edges,selected,setSelected,hovered,setHovered,onNodeMove,draggingNode,setDraggingNode,focusWorking,query,relation,motionEnabled}:{nodes:PositionedNode[];edges:WorkspaceGraphEdge[];selected:string|null;setSelected:(v:string)=>void;hovered:string|null;setHovered:(v:string|null)=>void;onNodeMove:(id:string,position:[number,number,number])=>void;draggingNode:string|null;setDraggingNode:(id:string|null)=>void;focusWorking:boolean;query:string;relation:'all'|GraphRelation;motionEnabled:boolean}){
   const activeFiles=useEdithStore((s)=>s.activeFiles)
   const q=query.trim().toLowerCase()
   const nodeMap=useMemo(()=>new Map(nodes.map((n)=>[n.id,n])),[nodes])
-  const selectedNode=selected?nodeMap.get(selected):undefined
   const relevantEdges=edges.filter((e)=>relation==='all'||e.relation===relation).filter((e)=>nodeMap.has(e.source)&&nodeMap.has(e.target))
-  const activeSet=new Set([...activeFiles,'__goal__','__task__','__memory__'])
+  const activeSet=new Set([...activeFiles,'__goal__'])
   const connectedSet=useMemo(()=>{
     const set=new Set<string>()
     if(selected){
@@ -186,31 +202,24 @@ function Scene({nodes,edges,selected,setSelected,hovered,setHovered,focusWorking
   },[selected,relevantEdges])
 
   return <>
-    <fog attach="fog" args={['#0d0d0f',5.2,10.8]}/>
-    <ambientLight intensity={.58}/>
-    <hemisphereLight args={['#ffffff','#121214',1.25]}/>
-    <directionalLight position={[4,5,5]} intensity={3.0} color="#ffffff"/>
-    <pointLight position={[2.7,.8,3.5]} intensity={3.4} color="#ff3b36" distance={9}/>
-    <Sparkles count={36} scale={[9,6,4]} size={.30} speed={motionEnabled?.08:.02} opacity={.10} color="#e1e1e3"/>
-    <SceneMotion enabled={motionEnabled}>
+    <CursorRig motionEnabled={motionEnabled&&!draggingNode}>
       {relevantEdges.map((edge,index)=>{
         const a=nodeMap.get(edge.source)!,b=nodeMap.get(edge.target)!
         const qDim=!!q&&!a.label.toLowerCase().includes(q)&&!b.label.toLowerCase().includes(q)
         const active=activeSet.has(a.path||a.id)||activeSet.has(b.path||b.id)||edge.source==='__goal__'
         const selectedRelated=selected?connectedSet.has(a.id)&&connectedSet.has(b.id):false
         const dim=(focusWorking&&!active&&!selectedRelated)||qDim
-        return <Edge key={edge.id} a={a} b={b} edge={edge} hot={active||selectedRelated} dim={dim} index={index}/>
+        return <Edge key={edge.id} a={a} b={b} edge={edge} hot={active||selectedRelated} dim={dim} index={index} motionEnabled={motionEnabled}/>
       })}
       {nodes.map((node)=>{
         const match=!!q&&(node.label.toLowerCase().includes(q)||(node.path||'').toLowerCase().includes(q))
         const active=activeSet.has(node.path||node.id)
         const related=selected?connectedSet.has(node.id):false
         const dim=(focusWorking&&!active&&!related)||(!!q&&!match)
-        return <GraphNode key={node.id} node={node} selected={selected===node.id} hovered={hovered===node.id} onSelect={()=>setSelected(node.id)} onHover={(v)=>setHovered(v?node.id:null)} dim={dim} active={active}/>
+        return <GraphNode key={node.id} node={node} selected={selected===node.id} hovered={hovered===node.id} onSelect={()=>setSelected(node.id)} onHover={(v)=>setHovered(v?node.id:null)} onMove={(position)=>onNodeMove(node.id,position)} onDragChange={(dragging)=>setDraggingNode(dragging?node.id:null)} dim={dim} active={active} motionEnabled={motionEnabled}/>
       })}
-    </SceneMotion>
-    <CameraController focusPosition={selectedNode?.position} focusNonce={focusNonce}/>
-    <OrbitControls enableDamping dampingFactor={.07} minDistance={2.2} maxDistance={9.2} rotateSpeed={.48} zoomSpeed={.62}/>
+    </CursorRig>
+    <OrbitControls enabled={!draggingNode} enableRotate enablePan enableDamping dampingFactor={.08} minZoom={65} maxZoom={210} zoomSpeed={.72} rotateSpeed={.42} minPolarAngle={Math.PI*.34} maxPolarAngle={Math.PI*.66}/>
   </>
 }
 
@@ -218,7 +227,10 @@ const relationLabels:Array<{id:'all'|GraphRelation;label:string}>=[
   {id:'all',label:'All'},
   {id:'contains',label:'Contains'},
   {id:'imports',label:'Imports'},
+  {id:'references',label:'References'},
+  {id:'depends_on',label:'Depends'},
   {id:'related_to',label:'Related'},
+  {id:'used_by',label:'Used by'},
 ]
 
 function KindIcon({kind}:{kind:GraphNodeKind}){
@@ -230,48 +242,49 @@ function KindIcon({kind}:{kind:GraphNodeKind}){
 }
 
 export function GraphView(){
+  const reducedMotion=useReducedMotion()
   const baseNodes=useEdithStore((s)=>s.graphNodes)
   const baseEdges=useEdithStore((s)=>s.graphEdges)
   const activeFiles=useEdithStore((s)=>s.activeFiles)
   const goal=useEdithStore((s)=>s.currentGoal)
-  const action=useEdithStore((s)=>s.currentAction)
   const workspace=useEdithStore((s)=>s.currentWorkspace)
-  const [selected,setSelected]=useState<string|null>('__goal__')
+  const [selected,setSelected]=useState<string|null>(null)
   const [hovered,setHovered]=useState<string|null>(null)
-  const [focus,setFocus]=useState(true)
+  const [focus,setFocus]=useState(false)
   const [query,setQuery]=useState('')
   const [relation,setRelation]=useState<'all'|GraphRelation>('all')
-  const [motionEnabled,setMotionEnabled]=useState(true)
-  const [focusNonce,setFocusNonce]=useState(0)
-  const layout=useMemo(()=>buildLayout(baseNodes,baseEdges,goal,action,activeFiles),[baseNodes,baseEdges,goal,action,activeFiles])
+  const [motionOverride,setMotionOverride]=useState<boolean|null>(null)
+  const [draggingNode,setDraggingNode]=useState<string|null>(null)
+  const [nodePositions,setNodePositions]=useState<Record<string,[number,number,number]>>({})
+  const motionEnabled=motionOverride??!reducedMotion
+  const baseLayout=useMemo(()=>buildLayout(baseNodes,baseEdges,goal,activeFiles),[baseNodes,baseEdges,goal,activeFiles])
+  const layout=useMemo(()=>({...baseLayout,nodes:baseLayout.nodes.map((node)=>nodePositions[node.id]?{...node,position:nodePositions[node.id]}:node)}),[baseLayout,nodePositions])
   const item=layout.nodes.find((n)=>n.id===selected)
-  const connections=item?layout.edges.filter((e)=>e.source===item.id||e.target===item.id).slice(0,6):[]
+  const connections=item?layout.edges.filter((edge)=>(relation==='all'||edge.relation===relation)&&(edge.source===item.id||edge.target===item.id)).slice(0,6):[]
 
   return <div className="standard-view graph-view premium-graph-view igloo-graph-view">
     <header className="view-head graph-head">
-      <div><span className="eyebrow">SPATIAL CONTEXT</span><h1>Workspace graph</h1><p>{workspace?.name} · {baseNodes.length} nodes · {baseEdges.length} relationships</p></div>
+      <div><span className="eyebrow">WORKSPACE TOPOLOGY</span><h1>Context map</h1><p>{workspace?.name} · {baseNodes.length} nodes · {baseEdges.length} relationships</p></div>
       <div className="graph-tools">
         <div className="compact-search"><Search size={14}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Find a node"/></div>
-        <button className={focus?'tool-toggle active':'tool-toggle'} onClick={()=>setFocus(!focus)}><SlidersHorizontal size={14}/>Working set</button>
-        <button className={motionEnabled?'tool-toggle active':'tool-toggle'} onClick={()=>setMotionEnabled(!motionEnabled)}>{motionEnabled?<Pause size={13}/>:<Play size={13}/>}Motion</button>
+        <button type="button" aria-pressed={focus} className={focus?'tool-toggle active':'tool-toggle'} onClick={()=>setFocus(!focus)}><SlidersHorizontal size={14}/>Working set</button>
+        <button type="button" aria-pressed={motionEnabled} className={motionEnabled?'tool-toggle active':'tool-toggle'} onClick={()=>setMotionOverride(!motionEnabled)}>{motionEnabled?<Pause size={13}/>:<Play size={13}/>}Motion</button>
       </div>
     </header>
 
-    <div className="graph-stage premium-graph-stage igloo-graph-stage">
+    <div className={`graph-stage premium-graph-stage igloo-graph-stage ${draggingNode?'dragging-node':''}`} aria-label="Interactive three-dimensional workspace relationship graph">
       <div className="graph-soft-light"/>
-      <Canvas camera={{position:[0,0,6.6],fov:42}} dpr={[1,1.7]} gl={{antialias:true,alpha:true,powerPreference:'high-performance'}} onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.05}}>
-        <Scene nodes={layout.nodes} edges={layout.edges} selected={selected} setSelected={(id)=>{setSelected(id);setFocusNonce((n)=>n+1)}} hovered={hovered} setHovered={setHovered} focusWorking={focus} query={query} relation={relation} motionEnabled={motionEnabled} focusNonce={focusNonce}/>
+      <Canvas orthographic aria-label="Workspace topology" camera={{position:[0,0,8],zoom:110}} dpr={[1,1.7]} performance={{min:.55}} onPointerMissed={()=>setSelected(null)} gl={{antialias:true,alpha:true,powerPreference:'high-performance'}} onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.05}}>
+        <Scene nodes={layout.nodes} edges={layout.edges} selected={selected} setSelected={setSelected} hovered={hovered} setHovered={setHovered} onNodeMove={(id,position)=>setNodePositions((current)=>({...current,[id]:position}))} draggingNode={draggingNode} setDraggingNode={setDraggingNode} focusWorking={focus} query={query} relation={relation} motionEnabled={motionEnabled}/>
       </Canvas>
 
-      <div className="graph-live-badge"><Radio size={12}/><span>Live topology</span><i/></div>
       <div className="graph-relation-bar">
-        <span><GitBranch size={12}/>Relations</span>
-        {relationLabels.map((r)=><button key={r.id} className={relation===r.id?'active':''} onClick={()=>setRelation(r.id)}>{r.label}</button>)}
+        <GitBranch size={12}/><label htmlFor="relation-filter">Show</label><select id="relation-filter" value={relation} onChange={(event)=>setRelation(event.target.value as 'all'|GraphRelation)}>{relationLabels.map((r)=><option key={r.id} value={r.id}>{r.label} relationships</option>)}</select>
       </div>
-      <div className="graph-legend dynamic"><span><i className="node-red"/>EDITH context</span><span><i/>Workspace</span><span className="graph-hint">Drag to orbit · scroll to zoom · select a node</span></div>
+      <div className="graph-legend dynamic"><span><i className="node-red"/>EDITH</span><span><i/>Workspace</span><span className="graph-hint">Drag a node to move · drag space to rotate · scroll to zoom</span></div>
       <div className="graph-quick-actions">
-        <button onClick={()=>{setSelected('__goal__');setFocusNonce((n)=>n+1)}} title="Focus EDITH"><Crosshair size={14}/></button>
-        <button onClick={()=>{setSelected('__goal__');setQuery('');setRelation('all');setFocusNonce((n)=>n+1)}} title="Reset"><RotateCcw size={14}/></button>
+        <button onClick={()=>setSelected('__goal__')} title="Select EDITH"><Crosshair size={14}/></button>
+        <button onClick={()=>{setSelected(null);setQuery('');setRelation('all');setNodePositions({})}} title="Reset graph"><RotateCcw size={14}/></button>
       </div>
 
       {item&&<div className="graph-detail rich premium-graph-detail igloo-graph-detail">
@@ -281,7 +294,7 @@ export function GraphView(){
         <div className="graph-connection-list"><small>Connections</small>{connections.length?connections.map((edge)=>{
           const otherId=edge.source===item.id?edge.target:edge.source
           const other=layout.nodes.find((n)=>n.id===otherId)
-          return <button key={edge.id} onClick={()=>{setSelected(otherId);setFocusNonce((n)=>n+1)}}><span>{edge.relation.replace('_',' ')}</span><b>{other?.label||otherId}</b></button>
+           return <button key={edge.id} onClick={()=>setSelected(otherId)}><span>{edge.relation.replace('_',' ')}</span><b>{other?.label||otherId}</b></button>
         }):<p>No direct relationships in this filter.</p>}</div>
       </div>}
     </div>

@@ -1,15 +1,35 @@
 # EDITH Frontend v0.4 — QA Report
 
+## Completion status
+
+- [x] CSS design system
+- [x] Application shell layout
+- [x] Mobius strip 3D visualization
+- [x] 3D workspace graph visualization
+- [x] Typography
+- [x] Alignment and spacing
+- [x] Duplicate navigation removed
+- [x] UI components
+- [x] Responsive layout, including compact phone navigation
+- [x] Orange/amber restricted to approval and warning states
+- [x] Final source and production-build QA
+
 ## Scope of this revision
 
 This pass addresses the navigation-return problem and the visual-quality complaints from v0.3.
 
 ### Navigation
 
-- Added a persistent **EDITH / AI workspace** button above the four tool views.
-- Added a contextual **Back to EDITH** button in the top bar whenever Workspace, Graph, Memory, or Activity is active.
+- Consolidated the duplicated EDITH return controls into the top-left brand button.
+- Kept the sidebar focused on the four workspace tools and converted core status into a non-navigation status surface.
 - Added `Esc` as a keyboard shortcut to return to the EDITH agent from any of the four tool views.
 - Workspace remains the only view that renders the project file explorer/editor.
+
+### Prompt workflow
+
+- Kept the command composer available after the first goal as a visible follow-up command surface.
+- Follow-up prompts can start a new controlled run from planning, approval, success, or failure states.
+- Preserved attachments and command-history navigation for subsequent prompts.
 
 ### Visual system
 
@@ -24,6 +44,7 @@ This pass addresses the navigation-return problem and the visual-quality complai
 - Added one restrained red state-reactive signal filament across the strip.
 - Added animated signal packets, soft orbit geometry, contact shadows, state-based motion speeds, and pointer/camera parallax.
 - Success/approval/failure states change the signal treatment without recoloring the entire UI.
+- Added adaptive canvas performance, lazy loading, accessible scene labels, and reduced-motion support.
 
 ### 3D graph
 
@@ -32,6 +53,7 @@ This pass addresses the navigation-return problem and the visual-quality complai
 - Added a larger EDITH/goal core, softer active halos, curved low-noise links, and animated packets on active relationships.
 - Retained orbit, zoom, node selection, camera focus, search, working-set filtering, relationship filtering, and connection inspection.
 - Removed the gamer/HUD-style grid treatment from the graph stage.
+- Made the motion control stop node, edge, backdrop, and scene movement consistently and respect reduced-motion preferences by default.
 
 ## Source QA
 
@@ -41,17 +63,12 @@ This pass addresses the navigation-return problem and the visual-quality complai
 - `package.json`: valid JSON.
 - CSS structural brace check: **848 opening / 848 closing braces**.
 
-## Build environment limitation
+## Build verification
 
-A full dependency-installed Vite build could not be completed in this execution environment because `npm install` could not reach/complete against the npm registry before the environment timeout. The project source was therefore validated with the locally installed TypeScript compiler and static relative-import checks instead.
-
-On a normal development machine run:
-
-```bash
-npm install
-npm run build
-npm run dev
-```
+- `npm run typecheck`: passed.
+- `npm run build`: passed with Vite 7.3.6.
+- 2,561 modules transformed successfully.
+- The Mobius and graph scenes are emitted as lazy-loaded chunks, keeping the initial application bundle independent of scene code.
 
 ## Backend boundary
 

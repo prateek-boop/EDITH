@@ -1,4 +1,4 @@
-import { PanelsTopLeft, Network, Database, Activity, Sparkles, MessageCircleMore } from 'lucide-react'
+import { PanelsTopLeft, Network, Database, Activity } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEdithStore } from '../../store/useEdithStore'
 import type { ActiveView } from '../../lib/types'
@@ -17,18 +17,12 @@ export function Sidebar(){
   const state=useEdithStore((s)=>s.agentState)
 
   return <aside className="sidebar igloo-sidebar">
-    <button className={active==='agent'?'edith-home active':'edith-home'} onClick={()=>set('agent')} aria-label="Return to EDITH">
-      <span className="edith-home-orb"><Sparkles size={15}/><i/></span>
-      <span className="edith-home-copy"><b>EDITH</b><small>AI workspace · Esc</small></span>
-      <MessageCircleMore size={16} className="edith-home-arrow"/>
-    </button>
+    <div className="sidebar-divider"><span>Workspace</span></div>
 
-    <div className="sidebar-divider"><span>Workspace tools</span></div>
-
-    <nav>
+    <nav aria-label="Workspace views">
       {items.map((item)=>{
         const Icon=item.icon
-        return <button key={item.id} className={active===item.id?'nav-item active':'nav-item'} onClick={()=>set(item.id)}>
+        return <button key={item.id} type="button" aria-current={active===item.id?'page':undefined} aria-label={item.label} className={active===item.id?'nav-item active':'nav-item'} onClick={()=>set(item.id)}>
           {active===item.id&&<motion.i className="nav-active-rail" layoutId="nav-active"/>}
           <span className="nav-icon"><Icon size={17}/></span>
           <span>{item.label}</span>
@@ -38,11 +32,10 @@ export function Sidebar(){
     </nav>
 
     <div className="sidebar-spacer"/>
-    <button className={`sidebar-core state-${state}`} onClick={()=>set('agent')} title="Return to EDITH agent">
+    <div className={`sidebar-core state-${state}`} aria-label={`EDITH core status: ${state.replace('_',' ')}`}>
       <span className="core-status-orb"><i/></span>
       <span><b>Core status</b><small>{state==='idle'?'ready':state.replace('_',' ')}</small></span>
-      <Sparkles size={13}/>
-    </button>
+    </div>
     <div className="sidebar-version">EDITH · spatial 0.4</div>
   </aside>
 }

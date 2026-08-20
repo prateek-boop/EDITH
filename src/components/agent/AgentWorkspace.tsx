@@ -1,6 +1,6 @@
 import { RotateCcw, TerminalSquare, Network, Activity, FileCode2, ArrowRight, CheckCircle2, LoaderCircle, ShieldAlert } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MobiusScene } from '../mobius/MobiusScene'
+import { lazy, Suspense } from 'react'
 import { CommandInput } from './CommandInput'
 import { PlanView } from './PlanView'
 import { ApprovalCard } from './ApprovalCard'
@@ -12,6 +12,8 @@ const quickGoals=[
   'Find why the application is failing and propose a verified fix.',
   'Map the architecture and identify the files most relevant to the current task.',
 ]
+
+const MobiusScene=lazy(()=>import('../mobius/MobiusScene').then((mod)=>({default:mod.MobiusScene})))
 
 export function AgentWorkspace(){
   const state=useEdithStore((s)=>s.agentState)
@@ -29,7 +31,9 @@ export function AgentWorkspace(){
 
   return <div className={`agent-view ${idle?'idle':'working'} state-${state}`}>
     <div className="agent-grid-bg"/>
-    <div className={idle?'mobius-layer':'mobius-layer working'}><MobiusScene state={state} dimmed={!idle}/></div>
+    <div className={idle?'mobius-layer':'mobius-layer working'} aria-label={`EDITH core visualization: ${state.replace('_',' ')}`}>
+      <Suspense fallback={<div className="mobius-fallback" aria-hidden="true"/>}><MobiusScene state={state} dimmed={!idle}/></Suspense>
+    </div>
 
     {idle&&<div className="core-readouts" aria-hidden="true">
       <div className="readout left"><span>CONTEXT</span><b>ONLINE</b><small>{workspace?.fileCount??graphNodes.filter((n)=>n.kind==='file').length} files indexed</small></div>
@@ -47,6 +51,7 @@ export function AgentWorkspace(){
         <div className="quick-goals">{quickGoals.map((q,i)=><motion.button key={q} onClick={()=>submit(q)} initial={{opacity:0,y:5}} animate={{opacity:1,y:0}} transition={{delay:.08*i}}><span>{i+1}</span>{q}<ArrowRight size={12}/></motion.button>)}</div>
       </motion.div> : <motion.div key="work" className="execution-overlay" initial={{opacity:0,x:-18}} animate={{opacity:1,x:0}}>
         <div className="execution-head"><div><span className="eyebrow">ACTIVE GOAL</span><h1>{goal}</h1><div className={`execution-state state-${state}`}><i/>{state.replace('_',' ')}</div></div><button className="quiet-btn" onClick={reset}><RotateCcw size={14}/>Reset</button></div>
+        <section className="follow-up-composer"><div className="section-label">FOLLOW-UP COMMAND</div><CommandInput compact/></section>
         <PlanView/>
         <section className="current-action"><div className="section-label">CURRENT ACTION</div><div className="action-line"><TerminalSquare size={16}/><span>{action}</span>{state==='success'?<CheckCircle2 size={15} className="action-success"/>:state==='waiting_approval'?<ShieldAlert size={15} className="action-wait"/>:<LoaderCircle size={15} className="spin action-running"/>}</div></section>
 

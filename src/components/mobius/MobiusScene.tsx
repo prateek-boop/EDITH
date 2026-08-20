@@ -1,17 +1,58 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { ContactShadows, Float, Sparkles } from '@react-three/drei'
-import { useMemo, useRef } from 'react'
+import { Float } from '@react-three/drei'
+import { useReducedMotion } from 'framer-motion'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import * as THREE from 'three'
 import type { AgentState } from '../../lib/types'
 
-const profiles: Record<AgentState,{rotation:number;signal:number;float:number;particles:number}> = {
-  idle:{rotation:.055,signal:.050,float:.22,particles:34},
-  planning:{rotation:.085,signal:.090,float:.30,particles:46},
-  waiting_approval:{rotation:.028,signal:.028,float:.10,particles:22},
-  executing:{rotation:.125,signal:.145,float:.38,particles:58},
-  verifying:{rotation:.155,signal:.185,float:.42,particles:66},
-  success:{rotation:.048,signal:.060,float:.18,particles:36},
-  failed:{rotation:.018,signal:.018,float:.07,particles:18},
+const profiles: Record<AgentState,{rotation:number;float:number}> = {
+  idle:{rotation:.14,float:.42},
+  planning:{rotation:.18,float:.50},
+  waiting_approval:{rotation:.020,float:.08},
+  executing:{rotation:.22,float:.58},
+  verifying:{rotation:.26,float:.66},
+  success:{rotation:.10,float:.32},
+  failed:{rotation:.012,float:.05},
+}
+
+type PointerTarget=MutableRefObject<{x:number;y:number;targetX:number;targetY:number;active:number;targetActive:number}>
+
+function useWindowPointerTarget(){
+  const target=useRef({x:0,y:0,targetX:0,targetY:0,active:0,targetActive:0})
+
+  useEffect(()=>{
+    const update=(event:PointerEvent)=>{
+      const width=Math.max(window.innerWidth,1)
+      const height=Math.max(window.innerHeight,1)
+      target.current.targetX=(event.clientX/width)*2-1
+      target.current.targetY=-(event.clientY/height)*2+1
+      target.current.targetActive=1
+    }
+    const settle=()=>{target.current.targetActive=0}
+    const tick=()=>{
+      target.current.x=THREE.MathUtils.lerp(target.current.x,target.current.targetX,.16)
+      target.current.y=THREE.MathUtils.lerp(target.current.y,target.current.targetY,.16)
+      target.current.active=THREE.MathUtils.lerp(target.current.active,target.current.targetActive,.11)
+      frame=window.requestAnimationFrame(tick)
+    }
+    let frame=window.requestAnimationFrame(tick)
+
+    window.addEventListener('pointermove',update,{passive:true})
+    window.addEventListener('pointerover',update,{passive:true})
+    window.addEventListener('pointerleave',settle)
+    window.addEventListener('blur',settle)
+    document.addEventListener('visibilitychange',settle)
+    return()=>{
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('pointermove',update)
+      window.removeEventListener('pointerover',update)
+      window.removeEventListener('pointerleave',settle)
+      window.removeEventListener('blur',settle)
+      document.removeEventListener('visibilitychange',settle)
+    }
+  },[])
+
+  return target
 }
 
 function mobiusPoint(u:number,v:number,radius=1.72){
@@ -24,8 +65,7 @@ function mobiusPoint(u:number,v:number,radius=1.72){
   )
 }
 
-function buildClosedMobius(segments=320,widthSegments=48){
-  const halfWidth=.52
+function buildClosedMobius(segments=320,widthSegments=48,halfWidth=.52){
   const positions:number[]=[]
   const uvs:number[]=[]
   const indices:number[]=[]
@@ -63,180 +103,124 @@ function buildClosedMobius(segments=320,widthSegments=48){
   return g
 }
 
-function makeSurfaceCurve(kind:'energy'|'rim'){
-  const points:THREE.Vector3[]=[]
-  const samples=420
-  for(let i=0;i<samples;i++){
-    const u=(i/samples)*Math.PI*4
-    const v=kind==='rim'?.525:.34*Math.sin(u*.5)
-    const p=mobiusPoint(u,v)
-    points.push(p.multiplyScalar(kind==='rim'?1.004:1.012))
-  }
-  return new THREE.CatmullRomCurve3(points,true,'centripetal',.35)
-}
-
-function SculpturalStrip({state}:{state:AgentState}){
-  const group=useRef<THREE.Group>(null)
+function SculpturalStrip({state,pointerTarget}:{state:AgentState;pointerTarget:PointerTarget}){
   const strip=useRef<THREE.MeshPhysicalMaterial>(null)
-  const glass=useRef<THREE.MeshPhysicalMaterial>(null)
-  const geometry=useMemo(()=>buildClosedMobius(),[])
-  const profile=profiles[state]
+  const geometry=useMemo(()=>buildClosedMobius(360,56),[])
 
-  useFrame(({clock,pointer},delta)=>{
-    if(!group.current)return
-    const t=clock.getElapsedTime()
-    group.current.rotation.y+=delta*profile.rotation
-    group.current.rotation.x=THREE.MathUtils.lerp(group.current.rotation.x,.42+pointer.y*.08+Math.sin(t*.24)*.025,.035)
-    group.current.rotation.z=THREE.MathUtils.lerp(group.current.rotation.z,-.10-pointer.x*.065,.035)
-    const breath=1+Math.sin(t*.82)*.006
-    group.current.scale.setScalar(breath)
+  useFrame(()=>{
+    const pointer=pointerTarget.current
     if(strip.current){
-      const target=state==='success'?'#d9e4dc':state==='failed'?'#68686c':'#d7d7d9'
-      strip.current.color.lerp(new THREE.Color(target),.035)
-      strip.current.emissiveIntensity=state==='executing'||state==='verifying'?.055:.018
+      const target=state==='success'?'#9eaaa2':state==='failed'?'#3d3d40':'#77787d'
+      strip.current.color.lerp(new THREE.Color(target),.04)
+      const baseEmissive=state==='executing'||state==='verifying'?.045:state==='planning'?.030:.012
+      strip.current.emissiveIntensity=baseEmissive+pointer.active*.018
     }
-    if(glass.current)glass.current.opacity=THREE.MathUtils.lerp(glass.current.opacity,state==='executing'||state==='verifying'?.22:.14,.035)
   })
 
-  return <group ref={group}>
-    <mesh geometry={geometry} castShadow receiveShadow>
+  return <mesh geometry={geometry} castShadow>
       <meshPhysicalMaterial
         ref={strip}
-        color="#d7d7d9"
-        emissive="#3e0c0e"
-        emissiveIntensity={.018}
+        color="#77787d"
+        emissive="#4f080a"
+        emissiveIntensity={.012}
         metalness={.72}
-        roughness={.24}
-        clearcoat={1}
-        clearcoatRoughness={.09}
-        sheen={.18}
-        sheenColor="#ffffff"
+        roughness={.26}
+        clearcoat={.65}
+        clearcoatRoughness={.14}
+        iridescence={.07}
+        iridescenceIOR={1.18}
+        sheen={.08}
+        sheenColor="#e10600"
+        sheenRoughness={.45}
+        flatShading
         side={THREE.DoubleSide}
       />
     </mesh>
-    <mesh geometry={geometry} scale={1.012}>
-      <meshPhysicalMaterial
-        ref={glass}
-        color="#ffffff"
-        metalness={.04}
-        roughness={.08}
-        clearcoat={1}
-        clearcoatRoughness={.04}
-        transmission={.08}
-        thickness={.25}
-        transparent
-        opacity={.14}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  </group>
 }
 
-function SignalPath({state}:{state:AgentState}){
-  const profile=profiles[state]
-  const curve=useMemo(()=>makeSurfaceCurve('energy'),[])
-  const rimCurve=useMemo(()=>makeSurfaceCurve('rim'),[])
-  const packets=useRef<THREE.InstancedMesh>(null)
-  const dummy=useMemo(()=>new THREE.Object3D(),[])
-  const count=14
-
-  useFrame(({clock})=>{
-    if(!packets.current)return
-    const t=clock.getElapsedTime()
-    for(let i=0;i<count;i++){
-      const progress=(t*profile.signal+i/count)%1
-      const p=curve.getPointAt(progress)
-      const scale=i%4===0?.034:.021
-      dummy.position.copy(p)
-      dummy.scale.setScalar(scale*(.9+Math.sin(t*2+i)*.1))
-      dummy.updateMatrix()
-      packets.current.setMatrixAt(i,dummy.matrix)
-    }
-    packets.current.instanceMatrix.needsUpdate=true
-  })
-
+function SignalPath({state,pointerTarget}:{state:AgentState;pointerTarget:PointerTarget}){
+  const geometry=useMemo(()=>buildClosedMobius(360,4,.018),[])
+  const signal=useRef<THREE.MeshBasicMaterial>(null)
   const signalColor=state==='success'?'#bfe6cb':state==='waiting_approval'?'#f0b85a':state==='failed'?'#7e2225':'#ff3535'
-  const intensity=state==='executing'||state==='verifying'?.92:state==='planning'?.70:.54
+  const intensity=state==='executing'||state==='verifying'?.88:state==='planning'?.62:.42
 
-  return <>
-    <mesh>
-      <tubeGeometry args={[curve,300,.018,10,true]}/>
-      <meshPhysicalMaterial color={signalColor} emissive={signalColor} emissiveIntensity={1.1} metalness={.18} roughness={.16} transparent opacity={intensity}/>
-    </mesh>
-    <mesh>
-      <tubeGeometry args={[rimCurve,360,.008,7,true]}/>
-      <meshBasicMaterial color="#ffffff" transparent opacity={.24}/>
-    </mesh>
-    <instancedMesh ref={packets} args={[undefined,undefined,count]}>
-      <sphereGeometry args={[1,12,12]}/>
-      <meshBasicMaterial color={signalColor} transparent opacity={.95}/>
-    </instancedMesh>
-  </>
+  useFrame(()=>{
+    const pointer=pointerTarget.current
+    if(signal.current)signal.current.opacity=THREE.MathUtils.lerp(signal.current.opacity,intensity+pointer.active*.10,.08)
+  })
+
+  return <mesh geometry={geometry} renderOrder={2}>
+    <meshBasicMaterial ref={signal} color={signalColor} transparent opacity={intensity} polygonOffset polygonOffsetFactor={-2} side={THREE.DoubleSide}/>
+  </mesh>
 }
 
-function SoftOrbit({state}:{state:AgentState}){
-  const ref=useRef<THREE.Group>(null)
-  const speed=profiles[state].rotation
+function StripRig({state,pointerTarget}:{state:AgentState;pointerTarget:PointerTarget}){
+  const group=useRef<THREE.Group>(null)
+  const profile=profiles[state]
   useFrame(({clock},delta)=>{
-    if(!ref.current)return
-    ref.current.rotation.z+=delta*speed*.22
-    ref.current.rotation.x=.86+Math.sin(clock.getElapsedTime()*.18)*.04
+    if(!group.current)return
+    const t=clock.getElapsedTime()
+    const pointer=pointerTarget.current
+    group.current.rotation.y+=delta*(profile.rotation+Math.abs(pointer.x)*.09+pointer.active*.045)
+    group.current.rotation.x=THREE.MathUtils.lerp(group.current.rotation.x,.46+pointer.y*.36+Math.sin(t*.32)*.035,.09)
+    group.current.rotation.z=THREE.MathUtils.lerp(group.current.rotation.z,-.08+pointer.x*.30,.09)
+    const breath=1+Math.sin(t*1.05)*.012+pointer.active*.022
+    group.current.scale.setScalar(breath)
   })
-  return <group ref={ref}>
-    <mesh rotation={[Math.PI/2,0,0]}>
-      <torusGeometry args={[2.52,.006,8,220]}/>
-      <meshBasicMaterial color="#ffffff" transparent opacity={.07}/>
-    </mesh>
-    <mesh rotation={[Math.PI/2,.6,0]}>
-      <torusGeometry args={[2.22,.0035,8,220]}/>
-      <meshBasicMaterial color="#ff3b30" transparent opacity={.085}/>
-    </mesh>
+  return <group ref={group} rotation={[.46,1.45,-.08]}>
+    <SculpturalStrip state={state} pointerTarget={pointerTarget}/>
+    <SignalPath state={state} pointerTarget={pointerTarget}/>
   </group>
 }
 
-function CoreAssembly({state}:{state:AgentState}){
-  return <Float speed={profiles[state].float} rotationIntensity={.08} floatIntensity={.10} floatingRange={[-.035,.035]}>
-    <group>
-      <SculpturalStrip state={state}/>
-      <SignalPath state={state}/>
-      <SoftOrbit state={state}/>
+function CoreAssembly({state,pointerTarget}:{state:AgentState;pointerTarget:PointerTarget}){
+  return <Float speed={profiles[state].float} rotationIntensity={.10} floatIntensity={.16} floatingRange={[-.06,.06]}>
+    <group position={[0,.18,0]} scale={.96}>
+      <mesh scale={.72}>
+        <sphereGeometry args={[.72,48,48]}/>
+        <meshBasicMaterial color="#c91318" transparent opacity={.025} depthWrite={false}/>
+      </mesh>
+      <StripRig state={state} pointerTarget={pointerTarget}/>
     </group>
   </Float>
 }
 
-function CameraEase({dimmed}:{dimmed:boolean}){
-  const {camera,pointer}=useThree()
+function CameraEase({dimmed,pointerTarget}:{dimmed:boolean;pointerTarget:PointerTarget}){
+  const {camera}=useThree()
   useFrame(()=>{
-    const x=pointer.x*(dimmed?.10:.18)
-    const y=pointer.y*(dimmed?.07:.12)
+    const pointer=pointerTarget.current
+    const x=pointer.x*(dimmed?.16:.38)
+    const y=pointer.y*(dimmed?.10:.26)
     camera.position.x=THREE.MathUtils.lerp(camera.position.x,x,.025)
     camera.position.y=THREE.MathUtils.lerp(camera.position.y,y,.025)
-    camera.lookAt(0,0,0)
+    camera.position.z=THREE.MathUtils.lerp(camera.position.z,(dimmed?7.05:7.25)-pointer.active*.22,.018)
+    camera.lookAt(0,.12,0)
   })
   return null
 }
 
 export function MobiusScene({state,dimmed=false}:{state:AgentState;dimmed?:boolean}){
-  const profile=profiles[state]
+  const pointerTarget=useWindowPointerTarget()
+  const reducedMotion=useReducedMotion()
   return <div className={dimmed?'mobius-canvas dimmed':'mobius-canvas'} data-state={state}>
     <div className="mobius-ambient" aria-hidden="true"><span/><span/></div>
     <Canvas
-      camera={{position:[0,.06,6.45],fov:34}}
+      aria-label={`Animated Mobius strip showing EDITH ${state.replace('_',' ')} state`}
+      frameloop={reducedMotion?'demand':'always'}
+      camera={{position:[0,.08,7.0],fov:32}}
       dpr={[1,1.8]}
+      performance={{min:.55}}
       gl={{antialias:true,alpha:true,powerPreference:'high-performance'}} onCreated={({gl})=>{gl.toneMapping=THREE.ACESFilmicToneMapping;gl.toneMappingExposure=1.05}}
       shadows
     >
-      <CameraEase dimmed={dimmed}/>
-      <fog attach="fog" args={['#0c0c0e',6.2,11]}/>
-      <ambientLight intensity={.52}/>
-      <hemisphereLight args={['#ffffff','#18181b',1.45]}/>
-      <directionalLight position={[3.4,4.8,5.5]} intensity={4.2} color="#ffffff" castShadow/>
-      <directionalLight position={[-4,-1.5,3]} intensity={1.6} color="#8d8d93"/>
-      <pointLight position={[3.2,.4,2.8]} intensity={state==='verifying'?6.5:4.4} color="#ff3934" distance={9}/>
-      <CoreAssembly state={state}/>
-      <Sparkles count={profile.particles} scale={[5.8,4.3,3.2]} size={.45} speed={profile.float*.45} opacity={dimmed?.08:.18} color="#d6d6d8"/>
-      <ContactShadows position={[0,-1.62,0]} opacity={.30} scale={5.4} blur={3.2} far={4.5}/>
+      <CameraEase dimmed={dimmed} pointerTarget={pointerTarget}/>
+      <fog attach="fog" args={['#09090b',6.5,10]}/>
+      <ambientLight intensity={.28}/>
+      <hemisphereLight args={['#f5f5f5','#09090b',1.1]}/>
+      <directionalLight position={[3.8,5.2,5.5]} intensity={3.6} color="#ffffff" castShadow/>
+      <directionalLight position={[-4,-2,2]} intensity={1.2} color="#4c4d52"/>
+      <pointLight position={[2.5,.2,2.8]} intensity={state==='verifying'?4.8:3.2} color="#d61d22" distance={8}/>
+      <CoreAssembly state={state} pointerTarget={pointerTarget}/>
     </Canvas>
   </div>
 }

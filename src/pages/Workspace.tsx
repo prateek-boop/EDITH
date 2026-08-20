@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { AppShell } from '../components/layout/AppShell'
 import { AgentWorkspace } from '../components/agent/AgentWorkspace'
 import { FilesView } from '../components/files/FilesView'
@@ -11,6 +11,25 @@ const GraphView=lazy(()=>import('../components/graph/GraphView').then((mod)=>({d
 export function WorkspacePage() {
   const view=useEdithStore((s)=>s.activeView)
   const setView=useEdithStore((s)=>s.setActiveView)
+  const initialRoute=useRef(true)
+
+  useEffect(()=>{
+    const syncFromUrl=()=>{
+      const requestedView=new URLSearchParams(window.location.search).get('view')
+      if(requestedView&&['agent','workspace','graph','memory','activity'].includes(requestedView)) setView(requestedView as Parameters<typeof setView>[0])
+    }
+    syncFromUrl()
+    window.addEventListener('popstate',syncFromUrl)
+    return()=>window.removeEventListener('popstate',syncFromUrl)
+  },[setView])
+
+  useEffect(()=>{
+    if(initialRoute.current){initialRoute.current=false;return}
+    const url=new URL(window.location.href)
+    if(url.searchParams.get('view')===view)return
+    url.searchParams.set('view',view)
+    window.history.pushState({},'',url)
+  },[view])
 
   useEffect(()=>{
     const onKey=(event:KeyboardEvent)=>{

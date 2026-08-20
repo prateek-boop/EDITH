@@ -35,6 +35,7 @@ interface EdithStore {
   executionLog: ExecutionLogItem[]
   commandHistory: string[]
   profileOpen: boolean
+  historyOpen: boolean
   projectSwitcherOpen: boolean
   isIndexingWorkspace: boolean
   setStage: (stage: AppStage) => void
@@ -47,6 +48,7 @@ interface EdithStore {
   setSelectedFile: (file: FileNode | null) => void
   setSelectedActivityId: (id: string | null) => void
   setProfileOpen: (open: boolean) => void
+  setHistoryOpen: (open: boolean) => void
   setProjectSwitcherOpen: (open: boolean) => void
   forgetMemory: (id: string) => void
   editMemory: (id: string, title: string) => void
@@ -67,12 +69,12 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
   stage: 'auth', authUser: null, activeView: 'agent', agentState: 'idle', currentWorkspace: null,
   currentGoal: '', currentAction: '', plan: initialPlan, selectedFile: null, selectedActivityId: null,
   files: fileTree, memory: memories, activity, graphNodes: fallbackGraph.nodes, graphEdges: fallbackGraph.edges,
-  activeFiles: [], executionLog: [], commandHistory: [], profileOpen: false, projectSwitcherOpen: false, isIndexingWorkspace: false,
+  activeFiles: [], executionLog: [], commandHistory: [], profileOpen: false, historyOpen: false, projectSwitcherOpen: false, isIndexingWorkspace: false,
 
   setStage: (stage) => set({ stage }),
   setAuthUser: (authUser) => set({ authUser, stage:'picker' }),
-  signOut: () => { clearTimers(); set({ authUser:null, stage:'auth', currentWorkspace:null, activeView:'agent', agentState:'idle', currentGoal:'', currentAction:'', activeFiles:[], executionLog:[] }) },
-  setActiveView: (activeView) => set({ activeView, profileOpen: false }),
+  signOut: () => { clearTimers(); set({ authUser:null, stage:'auth', currentWorkspace:null, activeView:'agent', agentState:'idle', currentGoal:'', currentAction:'', activeFiles:[], executionLog:[], historyOpen:false }) },
+  setActiveView: (activeView) => set({ activeView, profileOpen: false, historyOpen: false }),
   selectWorkspace: (currentWorkspace) => set({ currentWorkspace, stage: 'initializing', activeView:'agent' }),
   loadLocalWorkspace: async (fileList) => {
     set({ isIndexingWorkspace: true })
@@ -104,7 +106,8 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
   },
   setSelectedFile: (selectedFile) => set({ selectedFile }),
   setSelectedActivityId: (selectedActivityId) => set({ selectedActivityId }),
-  setProfileOpen: (profileOpen) => set({ profileOpen, projectSwitcherOpen: false }),
+  setProfileOpen: (profileOpen) => set({ profileOpen, historyOpen: false, projectSwitcherOpen: false }),
+  setHistoryOpen: (historyOpen) => set({ historyOpen, profileOpen: false, projectSwitcherOpen: false }),
   setProjectSwitcherOpen: (projectSwitcherOpen) => set({ projectSwitcherOpen, profileOpen: false }),
   forgetMemory: (id) => set((s) => ({ memory: s.memory.filter((m) => m.id !== id) })),
   editMemory: (id, title) => set((s) => ({ memory: s.memory.map((m) => m.id === id ? { ...m, title } : m) })),
@@ -189,7 +192,7 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
       agentState: 'success',
       currentAction: 'Verified: the requested outcome is stable',
       plan: s.plan.map((p) => ({...p, status:'done' as const})),
-      executionLog: s.executionLog.map((x) => ({...x, status:x.status === 'running' ? 'done' as const : x.status})).concat(log('Verified success', 'Execution completed and verification passed', 'done')),
+      executionLog: [...s.executionLog.map((x): ExecutionLogItem => ({...x, status:x.status === 'running' ? 'done' : x.status})), log('Verified success', 'Execution completed and verification passed', 'done')],
     })))
   },
 
