@@ -32,10 +32,6 @@ export function Sidebar(){
     </nav>
 
     <div className="sidebar-spacer"/>
-    <div className={`sidebar-core state-${state}`} aria-label={`EDITH core status: ${state.replace('_',' ')}`}>
-      <span className="core-status-orb"><i/></span>
-      <span><b>Core status</b><small>{state==='idle'?'ready':state.replace('_',' ')}</small></span>
-    </div>
     <div className="sidebar-version">EDITH · spatial 0.4</div>
   </aside>
 }

@@ -10,7 +10,7 @@ export function CommandInput({compact=false}:{compact?:boolean}){
   const submit=useEdithStore((s)=>s.submitGoal)
   const history=useEdithStore((s)=>s.commandHistory)
   const fileRef=useRef<HTMLInputElement>(null)
-  const send=()=>{const v=value.trim();if(!v)return;submit(v);setValue('');setAttachments([]);setHistoryIndex(-1)}
+  const send=()=>{const v=value.trim();if(!v)return;submit(v);setValue('');setAttachments([]);setHistoryIndex(-1);setTimeout(()=>document.querySelectorAll('textarea').forEach(t=>t.style.height='auto'), 10)}
   const add=(list:FileList|null)=>{if(list?.length)setAttachments((prev)=>[...prev,...Array.from(list)].slice(0,8))}
   const navigateHistory=(direction:1|-1)=>{
     if(!history.length)return
@@ -20,11 +20,11 @@ export function CommandInput({compact=false}:{compact?:boolean}){
   }
   return <motion.div className={`command-box dynamic-command ${compact?'compact-command':''}`} layout onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault();add(e.dataTransfer.files)}}>
     <div className="command-focus-line"/>
-    <textarea value={value} onChange={(e)=>setValue(e.target.value)} onKeyDown={(e)=>{
+    <textarea value={value} onChange={(e)=>{setValue(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}} onKeyDown={(e)=>{
       if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}
       if(e.key==='ArrowUp'&&e.altKey){e.preventDefault();navigateHistory(1)}
       if(e.key==='ArrowDown'&&e.altKey){e.preventDefault();navigateHistory(-1)}
-    }} placeholder={compact?'Ask a follow-up or give EDITH the next goal…':'Give EDITH a goal, not a conversation…'} rows={compact?2:3}/>
+    }} placeholder={compact?'Ask a follow-up or give EDITH the next goal…':'Give EDITH a goal, not a conversation…'} rows={1}/>
     <AnimatePresence>{attachments.length>0&&<motion.div className="attachment-chips" initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}}>{attachments.map((file,i)=><span key={`${file.name}-${i}`}><Paperclip size={11}/>{file.name}<button onClick={()=>setAttachments((x)=>x.filter((_,j)=>j!==i))}><X size={11}/></button></span>)}</motion.div>}</AnimatePresence>
     <div className="command-tools"><div><button type="button" onClick={()=>fileRef.current?.click()}><Paperclip size={15}/> Attach</button><span className="context-chip"><FolderKanban size={13}/> Workspace Context</span>{history.length>0&&<button type="button" className="history-hint" onClick={()=>navigateHistory(1)}><History size={13}/> History</button>}</div><button type="button" className="execute-button" disabled={!value.trim()} onClick={send}>{compact?'Send':'Execute'} <ArrowUp size={15}/></button></div>
     <div className="command-shortcut"><Command size={11}/> Enter to execute · Shift+Enter newline · Alt+↑ history</div>

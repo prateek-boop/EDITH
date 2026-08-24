@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { ActiveView, AgentState, AppStage, AuthUser, ExecutionLogItem, FileNode, PlanStep, Workspace, WorkspaceGraphEdge, WorkspaceGraphNode } from '../lib/types'
 import { activity, fileTree, memories, workspaces } from '../mock/data'
 import { buildGraphFromTree, buildWorkspaceFromFileList } from '../lib/workspace'
+import { buildWikilinkGraph, flattenTree } from '../lib/wikilinkParser'
 
 const initialPlan: PlanStep[] = [
   { id: 'p1', label: 'Inspect repository', status: 'pending' },
@@ -38,6 +39,23 @@ interface EdithStore {
   historyOpen: boolean
   projectSwitcherOpen: boolean
   isIndexingWorkspace: boolean
+
+  // ── Editor state ──
+  editorContent: string
+  editorDirty: boolean
+  editorSaveTimer: ReturnType<typeof setTimeout> | null
+
+  // ── WikiLink graph data ──
+  wikilinkNodes: { id: string; label: string; group: string; linkCount: number }[]
+  wikilinkEdges: { source: string; target: string }[]
+
+  graphSettings: {
+    filters: { search: string; orphans: boolean }
+    groups: Array<{ query: string; color: string }>
+    display: { arrows: boolean; textFade: number; nodeSize: number; linkThickness: number; animate: boolean }
+    forces: { centerForce: number; repelForce: number; linkForce: number; linkDistance: number }
+  }
+  setGraphSettings: (update: (prev: EdithStore['graphSettings']) => EdithStore['graphSettings']) => void
   setStage: (stage: AppStage) => void
   setAuthUser: (user: AuthUser) => void
   signOut: () => void
@@ -56,6 +74,18 @@ interface EdithStore {
   approve: () => void
   reject: () => void
   resetAgent: () => void
+
+  // ── Editor actions ──
+  openFileByPath: (path: string) => void
+  setEditorContent: (content: string) => void
+  saveCurrentFile: () => void
+
+  // ── File mutation actions ──
+  createVaultFile: (parentPath: string, name: string) => void
+  createVaultFolder: (parentPath: string, name: string) => void
+  renameVaultFile: (oldPath: string, newName: string) => void
+  deleteVaultFile: (path: string) => void
+  reindexWikilinks: () => void
 }
 
 let timers: number[] = []
@@ -70,7 +100,15 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
   currentGoal: '', currentAction: '', plan: initialPlan, selectedFile: null, selectedActivityId: null,
   files: fileTree, memory: memories, activity, graphNodes: fallbackGraph.nodes, graphEdges: fallbackGraph.edges,
   activeFiles: [], executionLog: [], commandHistory: [], profileOpen: false, historyOpen: false, projectSwitcherOpen: false, isIndexingWorkspace: false,
-
+  editorContent: '', editorDirty: false, editorSaveTimer: null,
+  wikilinkNodes: [], wikilinkEdges: [],
+  graphSettings: {
+    filters: { search: '', orphans: true },
+    groups: [],
+    display: { arrows: false, textFade: 0.5, nodeSize: 1.2, linkThickness: 1.5, animate: true },
+    forces: { centerForce: 0.15, repelForce: 30, linkForce: 1, linkDistance: 40 }
+  },
+  setGraphSettings: (update) => set((s) => ({ graphSettings: update(s.graphSettings) })),
   setStage: (stage) => set({ stage }),
   setAuthUser: (authUser) => set({ authUser, stage:'picker' }),
   signOut: () => { clearTimers(); set({ authUser:null, stage:'auth', currentWorkspace:null, activeView:'agent', agentState:'idle', currentGoal:'', currentAction:'', activeFiles:[], executionLog:[], historyOpen:false }) },
@@ -204,4 +242,135 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
       executionLog: s.executionLog.map((x) => x.status === 'waiting' ? {...x,status:'error' as const}:x),
     }))
   },
+
+  // ── Editor actions ──────────────────────────────────────────────────────────
+
+  openFileByPath: (path) => {
+    const { files, editorDirty, saveCurrentFile } = get()
+    // Save current file first if dirty
+    if (editorDirty) saveCurrentFile()
+
+    const flat = flattenTree(files)
+    const file = flat.find((f) => f.path === path)
+    if (file && file.type === 'file') {
+      set({ selectedFile: file, editorContent: file.content || '', editorDirty: false })
+    }
+  },
+
+  setEditorContent: (content) => {
+    const { editorSaveTimer } = get()
+    if (editorSaveTimer) clearTimeout(editorSaveTimer)
+
+    // Debounced auto-save after 800ms
+    const timer = setTimeout(() => {
+      get().saveCurrentFile()
+    }, 800)
+
+    set({ editorContent: content, editorDirty: true, editorSaveTimer: timer })
+  },
+
+  saveCurrentFile: () => {
+    const { selectedFile, editorContent, editorSaveTimer, files } = get()
+    if (!selectedFile) return
+    if (editorSaveTimer) clearTimeout(editorSaveTimer)
+
+    // Update file content in the tree
+    const updateTree = (nodes: FileNode[]): FileNode[] =>
+      nodes.map((n) => {
+        if (n.path === selectedFile.path) return { ...n, content: editorContent }
+        if (n.children) return { ...n, children: updateTree(n.children) }
+        return n
+      })
+
+    const newFiles = updateTree(files)
+    const newSelected = { ...selectedFile, content: editorContent }
+
+    set({ files: newFiles, selectedFile: newSelected, editorDirty: false, editorSaveTimer: null })
+
+    // Re-index wikilinks after save
+    setTimeout(() => get().reindexWikilinks(), 0)
+  },
+
+  // ── File mutation actions ──────────────────────────────────────────────────
+
+  createVaultFile: (parentPath, name) => {
+    const { files } = get()
+    const fileName = name.endsWith('.md') ? name : `${name}.md`
+    const newPath = parentPath ? `${parentPath}/${fileName}` : fileName
+    const newFile: FileNode = { name: fileName, type: 'file', path: newPath, language: 'markdown', content: `# ${name.replace(/\.md$/, '')}\n` }
+
+    const insertInTree = (nodes: FileNode[]): FileNode[] =>
+      nodes.map((n) => {
+        if (n.path === parentPath && n.type === 'folder') {
+          return { ...n, children: [...(n.children || []), newFile] }
+        }
+        if (n.children) return { ...n, children: insertInTree(n.children) }
+        return n
+      })
+
+    const newFiles = parentPath ? insertInTree(files) : [...files, newFile]
+    set({ files: newFiles })
+    setTimeout(() => get().reindexWikilinks(), 0)
+  },
+
+  createVaultFolder: (parentPath, name) => {
+    const { files } = get()
+    const newPath = parentPath ? `${parentPath}/${name}` : name
+    const newFolder: FileNode = { name, type: 'folder', path: newPath, children: [] }
+
+    const insertInTree = (nodes: FileNode[]): FileNode[] =>
+      nodes.map((n) => {
+        if (n.path === parentPath && n.type === 'folder') {
+          return { ...n, children: [...(n.children || []), newFolder] }
+        }
+        if (n.children) return { ...n, children: insertInTree(n.children) }
+        return n
+      })
+
+    const newFiles = parentPath ? insertInTree(files) : [...files, newFolder]
+    set({ files: newFiles })
+  },
+
+  renameVaultFile: (oldPath, newName) => {
+    const { files, selectedFile } = get()
+    const parts = oldPath.split('/')
+    parts[parts.length - 1] = newName
+    const newPath = parts.join('/')
+
+    const updateTree = (nodes: FileNode[]): FileNode[] =>
+      nodes.map((n) => {
+        if (n.path === oldPath) {
+          return { ...n, name: newName, path: newPath }
+        }
+        if (n.children) return { ...n, children: updateTree(n.children) }
+        return n
+      })
+
+    const newFiles = updateTree(files)
+    const newSelected = selectedFile?.path === oldPath ? { ...selectedFile, name: newName, path: newPath } : selectedFile
+    set({ files: newFiles, selectedFile: newSelected })
+    setTimeout(() => get().reindexWikilinks(), 0)
+  },
+
+  deleteVaultFile: (path) => {
+    const { files, selectedFile } = get()
+
+    const removeFromTree = (nodes: FileNode[]): FileNode[] =>
+      nodes.filter((n) => n.path !== path).map((n) => {
+        if (n.children) return { ...n, children: removeFromTree(n.children) }
+        return n
+      })
+
+    const newFiles = removeFromTree(files)
+    const newSelected = selectedFile?.path === path ? null : selectedFile
+    set({ files: newFiles, selectedFile: newSelected, editorContent: newSelected ? get().editorContent : '', editorDirty: false })
+    setTimeout(() => get().reindexWikilinks(), 0)
+  },
+
+  reindexWikilinks: () => {
+    const { files, graphEdges } = get()
+    const { nodes, edges } = buildWikilinkGraph(files, graphEdges)
+    set({ wikilinkNodes: nodes, wikilinkEdges: edges })
+  },
 }))
+

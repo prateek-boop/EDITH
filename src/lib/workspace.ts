@@ -105,7 +105,7 @@ function detectTech(paths: string[], packageJson: string) {
   return Array.from(tech).slice(0,6)
 }
 
-function flatten(nodes: FileNode[], out: FileNode[] = []) {
+export function flatten(nodes: FileNode[], out: FileNode[] = []) {
   for (const node of nodes) {
     out.push(node)
     if (node.children) flatten(node.children, out)
@@ -119,7 +119,7 @@ function normalizeImport(raw: string) {
 
 export function buildGraphFromTree(tree: FileNode[]) {
   const flat = flatten(tree)
-  const visible = flat.filter((n) => !n.path.split('/').some((part) => ['node_modules','.git','dist','build','.next','venv','.venv','__pycache__'].includes(part))).slice(0,120)
+  const visible = flat.filter((n) => !n.path.split('/').some((part) => ['node_modules','.git','dist','build','.next','venv','.venv','__pycache__'].includes(part))).slice(0,500)
   const nodes: WorkspaceGraphNode[] = visible.map((node) => ({
     id: node.path,
     label: node.name,
@@ -157,7 +157,14 @@ export function buildGraphFromTree(tree: FileNode[]) {
     }
   }
 
-  return { nodes, edges: edges.slice(0,220) }
+  edges.forEach(e => {
+    const s = nodes.find(n => n.id === e.source)
+    const t = nodes.find(n => n.id === e.target)
+    if (s) s.weight = (s.weight || 1) + 0.3
+    if (t) t.weight = (t.weight || 1) + 0.3
+  })
+
+  return { nodes, edges: edges.slice(0,800) }
 }
 
 function extractImports(content: string) {

@@ -8,8 +8,15 @@ import { HistoryPanel } from '../history/HistoryPanel'
 export function AppShell({ children }: { children: ReactNode }) {
   return <div className="app-shell">
     <TopBar />
-    <div className="body-shell"><Sidebar /><main className="main-workspace">{children}</main></div>
-    <ProjectBar />
+    <div className="body-shell">
+      <Sidebar />
+      <div className="workspace-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+        <main className="main-workspace">
+          {children}
+        </main>
+        <ProjectBar />
+      </div>
+    </div>
     <HistoryPanel />
     <ProfilePanel />
   </div>

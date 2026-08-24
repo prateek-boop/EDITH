@@ -14,6 +14,9 @@ export const fileTree: FileNode[] = [
       { name: 'api', type: 'folder', path: 'backend/api', children: [
         { name: 'routes.py', type: 'file', path: 'backend/api/routes.py', language: 'python', content: 'from fastapi import APIRouter\n\nrouter = APIRouter()\n\n@router.get("/health")\ndef health():\n    return {"status": "ok"}\n' },
       ] },
+      { name: 'services', type: 'folder', path: 'backend/services', children: Array.from({length: 40}).map((_, i) => (
+        { name: 'service_'+i+'.py', type: 'file', path: 'backend/services/service_'+i+'.py', language: 'python', content: 'from backend.core.settings import Settings\nfrom backend.services.service_'+((i+1)%40)+ ' import *\n\ndef run_'+i+'(): pass' }
+      )) },
       { name: 'core', type: 'folder', path: 'backend/core', children: [
         { name: 'settings.py', type: 'file', path: 'backend/core/settings.py', language: 'python', content: 'from pydantic_settings import BaseSettings\n\nclass Settings(BaseSettings):\n    app_name: str = "EDITH"\n' },
       ] },
@@ -23,14 +26,17 @@ export const fileTree: FileNode[] = [
   },
   { name: 'frontend', type: 'folder', path: 'frontend', children: [
     { name: 'src', type: 'folder', path: 'frontend/src', children: [
-      { name: 'App.tsx', type: 'file', path: 'frontend/src/App.tsx', language: 'tsx', content: 'export default function App() {\n  return <main>EDITH</main>\n}\n' },
+      { name: 'App.tsx', type: 'file', path: 'frontend/src/App.tsx', language: 'tsx', content: 'import { util_0 } from "./utils/util_0"\nexport default function App() {\n  return <main>EDITH</main>\n}\n' },
+      { name: 'components', type: 'folder', path: 'frontend/src/components', children: Array.from({length: 40}).map((_, i) => (
+        { name: 'component_'+i+'.tsx', type: 'file', path: 'frontend/src/components/component_'+i+'.tsx', language: 'tsx', content: 'import React from "react";\nimport { component_'+((i+5)%40)+' } from "./component_'+((i+5)%40)+'";\nimport { util_'+(i%20)+' } from "../utils/util_'+(i%20)+'";\nexport default function C() { return <div/> }' }
+      )) },
+      { name: 'utils', type: 'folder', path: 'frontend/src/utils', children: Array.from({length: 20}).map((_, i) => (
+        { name: 'util_'+i+'.ts', type: 'file', path: 'frontend/src/utils/util_'+i+'.ts', language: 'typescript', content: 'export const util_'+i+' = () => {}' }
+      )) }
     ] },
   ] },
   { name: 'docs', type: 'folder', path: 'docs', children: [
     { name: 'architecture.md', type: 'file', path: 'docs/architecture.md', language: 'markdown', content: '# EDITH Architecture\n\nGoal → plan → controlled action → verification → memory.\n' },
-  ] },
-  { name: 'tests', type: 'folder', path: 'tests', children: [
-    { name: 'test_health.py', type: 'file', path: 'tests/test_health.py', language: 'python', content: 'def test_health(client):\n    assert client.get("/health").status_code == 200\n' },
   ] },
   { name: 'README.md', type: 'file', path: 'README.md', language: 'markdown', content: '# EDITH\n\nA goal-driven Personal AI Operating System.\n' },
   { name: 'requirements.txt', type: 'file', path: 'requirements.txt', language: 'text', content: 'fastapi==0.116.1\nuvicorn==0.35.0\npydantic-settings==2.10.1\n' },

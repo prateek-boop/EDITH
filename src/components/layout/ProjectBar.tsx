@@ -21,9 +21,22 @@ export function ProjectBar(){
       <button className="open-new" onClick={()=>useEdithStore.getState().setStage('picker')}><FolderPlus size={14}/>Open New Project</button>
     </motion.div>}</AnimatePresence>
     <footer className="projectbar upgraded">
-      <div className="project-ident"><span className="status-dot active"/><div><strong>{ws?.name??'Workspace'}</strong><small>{ws?.source==='local'?<><GitBranch size={11}/>{ws.gitDetected?'Git workspace':'Local workspace'}</>:<><Cpu size={11}/>{ws?.tech?.slice(0,2).join(' · ')}</>}</small></div></div>
-      <div className="project-progress"><div className="progress-track"><motion.div animate={{width:`${executionProgress}%`}}/></div><span>{state==='idle'?`${executionProgress}% PROJECT`:`${executionProgress}% EXECUTION`}</span></div>
-      <div className="project-end"><button className="switch-btn" onClick={()=>setOpen(!open)}>Switch Project <ChevronUp size={15}/></button><button className="bottom-profile" onClick={()=>setProfile(true)}><CircleUserRound size={18}/></button></div>
+      <div className="project-ident" style={{ flexDirection: 'row', gap: '8px' }}>
+        <span className="status-dot active" style={{ width: 6, height: 6 }}/>
+        <strong style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.2px' }}>{ws?.name??'Workspace'}</strong>
+      </div>
+      <div className="project-progress">
+        <div className="progress-track" style={{ width: '150px', height: '2px' }}><motion.div animate={{width:`${executionProgress}%`}}/></div>
+        <span style={{ fontSize: '10px' }}>{state==='idle'?`${executionProgress}% PROJECT`:`${executionProgress}% EXECUTION`}</span>
+      </div>
+      <div className="project-end" style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingRight: '16px' }}>
+        <button className="switch-btn" onClick={()=>setOpen(!open)} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          Switch Project <ChevronUp size={13}/>
+        </button>
+        <button className="bottom-profile" onClick={()=>setProfile(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <CircleUserRound size={14}/>
+        </button>
+      </div>
     </footer>
   </>
 }

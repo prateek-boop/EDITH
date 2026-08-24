@@ -70,7 +70,7 @@ function buildClosedMobius(segments=320,widthSegments=48,halfWidth=.52){
   const uvs:number[]=[]
   const indices:number[]=[]
 
-  for(let i=0;i<segments;i++){
+  for(let i=0;i<=segments;i++){
     const t=i/segments
     const u=t*Math.PI*2
     for(let j=0;j<=widthSegments;j++){
@@ -82,15 +82,12 @@ function buildClosedMobius(segments=320,widthSegments=48,halfWidth=.52){
   }
 
   for(let i=0;i<segments;i++){
-    const next=(i+1)%segments
-    const flips=i===segments-1
+    const next=i+1
     for(let j=0;j<widthSegments;j++){
       const a=i*(widthSegments+1)+j
       const d=i*(widthSegments+1)+j+1
-      const nextJ=flips?widthSegments-j:j
-      const nextJ1=flips?widthSegments-j-1:j+1
-      const b=next*(widthSegments+1)+nextJ
-      const c=next*(widthSegments+1)+nextJ1
+      const b=next*(widthSegments+1)+j
+      const c=next*(widthSegments+1)+j+1
       indices.push(a,b,d,b,c,d)
     }
   }

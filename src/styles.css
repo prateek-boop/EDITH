@@ -734,22 +734,20 @@ code, pre {
 .app-shell {
   height: 100%;
   display: grid;
-  grid-template-rows: 52px minmax(0, 1fr) 50px;
-  background: transparent;
-  padding: 12px;
-  gap: 10px;
+  grid-template-rows: 44px minmax(0, 1fr);
+  background: var(--surface-bg, #1e1e1e);
+  padding: 0;
+  gap: 0;
 }
 
 /* Top Bar */
 .topbar {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) 300px;
+  grid-template-columns: 200px minmax(0, 1fr) 300px;
   align-items: center;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(180deg, rgba(34, 34, 37, 0.78), rgba(20, 20, 23, 0.74));
-  backdrop-filter: blur(28px) saturate(125%);
-  -webkit-backdrop-filter: blur(28px) saturate(125%);
-  box-shadow: var(--frost-shadow), var(--frost-inner);
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--surface-border);
   overflow: hidden;
   z-index: 20;
 }
@@ -793,6 +791,9 @@ code, pre {
   gap: 7px;
   font-size: 11px;
   color: var(--text-muted);
+  position: absolute;
+  left: calc(50% + 36px);
+  transform: translateX(-50%);
 }
 
 .top-project b {
@@ -916,19 +917,20 @@ code, pre {
 /* Body Shell */
 .body-shell {
   min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
 }
 
 /* Sidebar */
 .sidebar {
   min-height: 0;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(160deg, rgba(34, 34, 38, 0.74), rgba(18, 18, 21, 0.68));
-  backdrop-filter: blur(28px) saturate(120%);
-  -webkit-backdrop-filter: blur(28px) saturate(120%);
-  box-shadow: var(--frost-shadow), var(--frost-inner);
+  height: 100%;
+  border-radius: 0;
+  background: transparent;
+  border-right: 1px solid var(--surface-border);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -1119,22 +1121,13 @@ code, pre {
 .main-workspace {
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(145deg, rgba(14, 14, 16, 0.84), rgba(8, 8, 10, 0.90));
-  box-shadow: var(--frost-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  border-radius: 0;
+  background: transparent;
   position: relative;
-}
-
-.main-workspace::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(circle at 52% 0%, rgba(255, 255, 255, 0.035), transparent 26%),
-    radial-gradient(circle at 84% 30%, rgba(225, 6, 0, 0.018), transparent 28%);
 }
 
 .main-workspace > * {
@@ -1144,12 +1137,10 @@ code, pre {
 
 /* Project Bar */
 .projectbar {
-  height: 50px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(180deg, rgba(31, 31, 34, 0.78), rgba(18, 18, 21, 0.74));
-  backdrop-filter: blur(26px) saturate(120%);
-  -webkit-backdrop-filter: blur(26px) saturate(120%);
-  box-shadow: var(--frost-shadow), var(--frost-inner);
+  height: 34px;
+  border-radius: 0;
+  background: var(--surface-bg, #1e1e1e);
+  border-top: 1px solid var(--surface-border);
   display: grid;
   grid-template-columns: 300px 1fr 300px;
   align-items: center;
@@ -2635,15 +2626,13 @@ code, pre {
 
 .files-grid,
 .workspace-grid {
-  height: calc(100% - 74px);
+  height: 100%;
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   border: none;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(145deg, rgba(31, 31, 34, 0.56), rgba(14, 14, 16, 0.66));
-  box-shadow: var(--frost-inner), 0 22px 55px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border-radius: 0;
+  background: var(--surface-bg, #1e1e1e);
   overflow: hidden;
 }
 
@@ -2749,9 +2738,7 @@ code, pre {
 .workspace-editor {
   min-width: 0;
   overflow: auto;
-  background:
-    radial-gradient(circle at 30% 0%, rgba(255, 255, 255, 0.025), transparent 25%),
-    rgba(8, 8, 10, 0.38);
+  background: var(--surface-bg, #1e1e1e);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.09) transparent;
 }
@@ -3111,8 +3098,8 @@ code, pre {
   background: var(--text-dim);
 }
 
-.graph-legend .node-red {
-  background: var(--accent-bright);
+.graph-legend .node-white {
+  background: #ffffff;
 }
 
 .graph-hint {
@@ -3277,29 +3264,21 @@ code, pre {
 .graph-node-label {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
   white-space: nowrap;
-  color: var(--text-primary);
-  font: 9px var(--font-mono);
+  color: #cccccc;
+  font: 12px var(--font-mono);
   pointer-events: none;
   border: none;
-  border-radius: var(--radius-full);
-  background: rgba(12, 12, 14, 0.88);
-  backdrop-filter: blur(20px);
-  padding: 6px 9px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  padding: 1px 3px;
+  box-shadow: none;
 }
 
 .graph-node-label i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-
-.graph-node-label i[data-kind="goal"],
-.graph-node-label.selected i {
-  background: var(--accent-bright);
+  display: none;
 }
 
 .graph-node-label.dim {
@@ -3307,27 +3286,17 @@ code, pre {
 }
 
 .graph-node-label.selected {
-  border: 1px solid rgba(225, 6, 0, 0.22);
-  background: rgba(54, 28, 30, 0.75);
-  color: var(--text-primary);
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .graph-node-label.quiet {
-  gap: 3px;
-  padding: 1px 3px;
-  background: transparent;
-  box-shadow: none;
-  color: #777980;
-  font-size: 7px;
-  backdrop-filter: none;
-}
-
-.graph-node-label.quiet i {
-  display: none;
+  color: #999999;
+  font-size: 11px;
 }
 
 .graph-node-label.hovered {
-  color: var(--text-primary);
+  color: #ffffff;
 }
 
 
@@ -4334,10 +4303,6 @@ code, pre {
     right: 16px;
   }
 
-  .standard-view {
-    padding: 22px;
-  }
-
   .files-grid,
   .workspace-grid {
     grid-template-columns: 260px minmax(0, 1fr);
@@ -4718,10 +4683,6 @@ code, pre {
     border-radius: var(--radius-lg);
   }
 
-  .standard-view {
-    padding: 12px;
-  }
-
   .view-head {
     height: 62px;
   }
@@ -4956,11 +4917,11 @@ code, pre {
 .graph-stage,
 .premium-graph-stage,
 .activity-grid {
-  height: auto;
+  height: 100%;
   min-height: 0;
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 16px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 18px 48px rgba(0, 0, 0, 0.2);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .memory-summary {
@@ -5066,3 +5027,615 @@ code, pre {
     text-align: right;
   }
 }
+
+/* ==========================================================================
+   ULTRA-SLEEK COMPACT CHAT INTERFACE OVERRIDES V3
+   ========================================================================== */
+
+/* 1. Global Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* 2. Thinner Sidebar */
+.body-shell { grid-template-columns: 72px minmax(0, 1fr) !important; }
+.topbar { grid-template-columns: 72px minmax(0, 1fr) 300px !important; }
+.edith-logo { padding: 0 !important; justify-content: center !important; gap: 4px !important; }
+.edith-logo span { display: inline-block !important; font-size: 10px !important; letter-spacing: 2px !important; }
+.sidebar .nav-item span:not(.nav-icon), .sidebar .nav-item b, .sidebar-divider, .sidebar-version, .sidebar-core > span:not(.core-status-orb) { display: none !important; }
+.sidebar .nav-item { justify-content: center !important; padding: 12px !important; }
+.sidebar-core { justify-content: center !important; padding: 12px !important; background: transparent !important; border: none !important; }
+
+/* 3. Transparent Execution Overlay */
+.execution-overlay { background: transparent !important; padding: 30px 24px !important; inset: 0 !important; width: 100% !important; display: flex !important; flex-direction: column !important; align-items: center !important; overflow-y: auto !important; }
+.execution-overlay > * { width: 100% !important; max-width: 840px !important; }
+.mobius-layer.working { inset: 0 !important; opacity: 0.15 !important; transform: scale(1) !important; pointer-events: none !important; }
+
+/* 4. Ultra-Sleek Command Input */
+.command-box { max-width: 840px !important; width: 95% !important; margin: 0 auto !important; border-radius: 20px !important; }
+.command-box textarea { min-height: 44px !important; padding: 14px 18px 0 !important; font-size: 14px !important; line-height: 1.4 !important; height: 44px !important; }
+.command-tools { height: 36px !important; padding: 0 14px 8px !important; }
+.compact-command textarea { min-height: 42px !important; padding: 12px 16px 0 !important; height: 42px !important; font-size: 14px !important; }
+.compact-command .command-tools { height: 34px !important; padding: 0 12px 8px !important; }
+
+/* Center execution log content */
+.execution-head, .execution-stream, .approval-card, .verification, .failed-state, .success-actions, .execution-stream-details {
+  max-width: 840px !important; width: 92% !important; margin-left: auto !important; margin-right: auto !important;
+}
+
+
+
+
+/* Reduce execution stream and approval card sizes */
+.execution-stream-details { margin: 0 auto 16px !important; background: rgba(255, 255, 255, 0.02) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: var(--radius-md) !important; overflow: hidden !important; }
+.execution-summary { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 12px !important; cursor: pointer !important; font-size: 13px !important; font-weight: 500 !important; color: var(--text-secondary) !important; user-select: none !important; }
+.execution-summary:hover { background: rgba(255, 255, 255, 0.03) !important; color: var(--text-primary) !important; }
+.execution-stream-details .execution-log-list { padding: 0 16px 16px !important; border-top: 1px solid rgba(255, 255, 255, 0.03) !important; }
+
+.approval-card { margin: 12px auto 16px !important; padding: 12px 16px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 15px rgba(0, 0, 0, 0.15) !important; background: rgba(20, 16, 10, 0.95) !important; position: relative !important; bottom: auto !important; z-index: 1 !important; }
+.approval-title { margin-bottom: 12px !important; }
+.approval-reason p { font-size: 12px !important; }
+.verification { padding: 14px 16px !important; margin-top: 12px !important; }
+
+/* Fix massive text sizes */
+.execution-head h1 { font-size: 15px !important; font-weight: 500 !important; letter-spacing: normal !important; margin: 4px 0 6px !important; }
+
+/* Make idle content centered perfectly */
+.idle-content { align-items: center !important; text-align: center !important; }
+.idle-copy { margin: 0 auto !important; }
+.idle-copy h1 { font-size: 18px !important; }
+
+/* Prevent media queries from breaking this */
+@media (max-width: 1400px) { .execution-overlay { width: 100% !important; inset: 0 !important; } }
+@media (max-width: 900px) { .execution-overlay { width: 100% !important; inset: 0 !important; } .mobius-layer.working { inset: 0 !important; } }
+@media (max-width: 640px) { .execution-overlay { width: 100% !important; inset: 0 !important; } }
+
+/* Remove scrollbar in idle state */
+.agent-view.idle {
+  overflow: hidden !important;
+}
+
+/* Ensure the wrapper doesn't overflow */
+.agent-workspace {
+  overflow: hidden !important;
+}
+
+/* Guarantee textarea height regardless of state */
+body .agent-view.idle .command-box textarea,
+body .agent-view .command-box textarea,
+body .compact-command textarea,
+.command-box textarea {
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 16px 20px 0 !important;
+  font-size: 14px !important;
+}
+
+/* Eliminate vertical bloat */
+.command-tools {
+  height: 38px !important;
+  padding: 0 14px 6px !important;
+  margin-top: -6px !important;
+}
+
+/* Remove extra shortcut text */
+.command-shortcut {
+  display: none !important;
+}
+
+/* Match quick goals width to the input box */
+.quick-goals {
+  max-width: 840px !important;
+  width: 92% !important;
+  margin: 40px auto 0 !important;
+}
+
+/* Fix readout box text alignments */
+.readout {
+  text-align: center !important;
+  align-items: center !important;
+  padding: 14px 16px !important;
+}
+
+.readout.right {
+  text-align: center !important;
+  align-items: center !important;
+}
+
+/* Center Execute button and increase quick goals distance */
+.command-tools {
+  position: relative !important;
+}
+
+
+
+.quick-goals {
+  margin-top: 30px !important;
+}
+
+/* Right-align and vertically center the execute button */
+.command-box {
+  position: relative !important;
+}
+
+.command-tools .execute-button {
+  position: absolute !important;
+  right: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  margin: 0 !important;
+}
+
+/* Prevent text from going under the button */
+body .agent-view.idle .command-box textarea,
+body .agent-view .command-box textarea,
+body .compact-command textarea,
+.command-box textarea {
+  padding-right: 130px !important;
+}
+
+.command-tools { position: static !important; }
+
+.success-actions {
+  justify-content: center !important;
+  margin-top: 20px !important;
+}
+
+/* Fix textarea text moving up */
+body .agent-view.idle .command-box textarea,
+body .agent-view .command-box textarea,
+body .compact-command textarea,
+.command-box textarea {
+  height: auto !important;
+  min-height: 48px !important;
+  padding: 26px 130px 10px 24px !important;
+  line-height: 20px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+
+/* Stick the follow-up text box to the bottom */
+.follow-up-composer {
+  margin-top: auto !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  padding-bottom: 32px !important;
+  padding-top: 32px !important;
+  border-bottom: none !important;
+  z-index: 100 !important;
+  width: 100% !important;
+  left: 0 !important;
+}
+
+.follow-up-composer .section-label {
+  display: none !important;
+}
+
+
+
+/* Forcefully push the idle content down */
+body .agent-view.idle .idle-content {
+}
+
+/* Safely nudge the idle text down without causing overflow cuts */
+body .agent-view.idle .idle-copy {
+  margin-top: calc(8vh + 50px) !important;
+}
+
+/* Obsidian Graph Settings */
+.obsidian-graph-settings {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 260px;
+  background: var(--surface-bg, #1e1e1e);
+  border: none;
+  border-radius: 6px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  color: var(--text-primary, #cccccc);
+  font-size: 13px;
+}
+
+.obsidian-settings-top {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.obsidian-settings-top .icon-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+.obsidian-settings-top .icon-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.obsidian-setting-section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.obsidian-setting-section:last-child {
+  border-bottom: none;
+}
+
+.obsidian-setting-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #eeeeee;
+  padding: 8px 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+.obsidian-setting-header:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.obsidian-setting-content {
+  padding: 8px 4px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.setting-row.toggle-row {
+  justify-content: space-between;
+}
+.setting-row.slider-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.setting-row.slider-row input[type="range"] {
+  width: 100%;
+}
+
+.obsidian-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: 100%;
+  font-size: 12px;
+  outline: none;
+}
+.obsidian-input:focus {
+  border-color: #a882ff;
+}
+
+.group-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.group-row input[type="color"] {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.obsidian-add-btn {
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,0.2);
+  color: #aaa;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.obsidian-add-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.obsidian-settings-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: rgba(30, 30, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0a0a0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.2s;
+}
+
+.obsidian-settings-toggle:hover {
+  background: rgba(40, 40, 40, 0.8);
+  color: #ffffff;
+}
+
+/* Obsidian Overhaul */
+.graph-stage {
+    background: var(--surface-bg, #1e1e1e) !important;
+    box-shadow: none !important;
+}
+.graph-soft-light {
+    display: none !important;
+}
+.graph-node-label {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Microsoft YaHei Light", sans-serif;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #a8a8a8 !important;
+    text-shadow: none !important;
+    background: transparent !important;
+}
+.graph-node-label.hovered, .graph-node-label.selected {
+    color: #dfdfdf !important;
+}
+
+/* ==========================================================================
+   Opensidian-derived: Editor Pane
+   ========================================================================== */
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  flex-shrink: 0;
+}
+.editor-filename {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dirty-dot { color: var(--text-muted); }
+.editor-mode-buttons {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.editor-mode-btn {
+  padding: 5px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+}
+.editor-mode-btn:hover { color: var(--text-primary); background: var(--glass-highlight); }
+.editor-mode-btn.active { color: var(--accent); background: var(--accent-glow); }
+.editor-save-btn {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-deep);
+  cursor: pointer;
+  margin-left: 6px;
+}
+.editor-content-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.editor-panel-full, .preview-panel-full {
+  height: 100%;
+  overflow: auto;
+}
+.editor-split-container {
+  display: flex;
+  height: 100%;
+}
+.editor-split-left, .editor-split-right {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+.editor-split-divider {
+  width: 1px;
+  background: var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* CodeMirror overrides */
+.cm-editor { height: 100% !important; background: transparent !important; }
+.cm-editor .cm-scroller { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+.cm-focused { outline: none !important; }
+.cm-editor .cm-content { padding: 12px 16px; }
+
+/* ==========================================================================
+   Opensidian-derived: Markdown Preview
+   ========================================================================== */
+.markdown-preview {
+  padding: 20px 24px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  max-width: 740px;
+  overflow-y: auto;
+  height: 100%;
+}
+.markdown-preview h1 { font-size: 1.8em; font-weight: 700; margin: 0.6em 0 0.3em; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.2em; }
+.markdown-preview h2 { font-size: 1.4em; font-weight: 600; margin: 0.6em 0 0.3em; }
+.markdown-preview h3 { font-size: 1.15em; font-weight: 600; margin: 0.5em 0 0.2em; }
+.markdown-preview p { margin: 0.4em 0; }
+.markdown-preview ul, .markdown-preview ol { padding-left: 1.4em; margin: 0.3em 0; }
+.markdown-preview li { margin: 0.15em 0; }
+.markdown-preview code { background: var(--glass); padding: 2px 5px; border-radius: 4px; font-size: 0.9em; }
+.markdown-preview pre { background: var(--glass-strong); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; overflow-x: auto; margin: 0.6em 0; }
+.markdown-preview pre code { background: transparent; padding: 0; }
+.markdown-preview blockquote { border-left: 3px solid var(--accent-deep); padding-left: 12px; margin: 0.6em 0; color: var(--text-secondary); }
+.markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.6em 0; }
+.markdown-preview th, .markdown-preview td { border: 1px solid var(--glass-border); padding: 6px 10px; text-align: left; font-size: 0.9em; }
+.markdown-preview th { background: var(--glass); font-weight: 600; }
+.markdown-preview a { color: var(--accent-bright); text-decoration: underline; }
+.markdown-preview img { max-width: 100%; border-radius: 8px; margin: 0.6em 0; }
+.wikilink-anchor { color: var(--accent-bright) !important; font-weight: 500; }
+
+/* ==========================================================================
+   Opensidian-derived: 2D Graph Canvas
+   ========================================================================== */
+.graph-canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: transparent;
+}
+.graph-svg {
+  width: 100%;
+  height: 100%;
+}
+.graph-tooltip {
+  pointer-events: none;
+  position: absolute;
+  z-index: 50;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  max-width: 220px;
+}
+.graph-tooltip-label { font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 0; }
+.graph-tooltip-meta { font-size: 11px; color: var(--text-muted); margin: 2px 0 0; }
+
+/* ==========================================================================
+   Opensidian-derived: Context Menu + Dialogs
+   ========================================================================== */
+.vault-context-menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--glass-strong);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  padding: 4px 0;
+  min-width: 150px;
+}
+.vault-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.vault-context-menu button:hover { background: var(--glass-highlight); color: var(--text-primary); }
+.vault-context-menu .ctx-danger { color: #e74c3c; }
+.vault-context-menu .ctx-danger:hover { background: rgba(231,76,60,.12); }
+.vault-context-menu .ctx-divider { height: 1px; background: var(--glass-border); margin: 4px 0; }
+
+.vault-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+}
+.vault-dialog {
+  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  width: 320px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.6);
+}
+.vault-dialog-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+.vault-dialog-input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  margin-bottom: 14px;
+}
+.vault-dialog-input:focus { border-color: var(--accent); }
+.vault-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.vault-dialog-actions button {
+  padding: 5px 14px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+.vault-dialog-actions button:hover { color: var(--text-primary); }
+.vault-dialog-actions button.primary {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid var(--accent-deep);
+}
+.vault-dialog-actions button.primary:hover { background: var(--accent-deep); color: #fff; }
+.vault-dialog-actions button:disabled { opacity: .4; pointer-events: none; }
+
