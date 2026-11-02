@@ -1,0 +1,11 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "en",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "CRUD"],
+  "ownership": {"Select/Listbox": "native"},
+  "requiredCommands": ["typecheck", "build", "browser"],
+  "commands": {"typecheck": "npm run typecheck", "build": "npm run build", "browser": "npm run qa:browser"},
+  "evidence": {"crudFullFlow": "tests/workspace.spec.ts", "failurePaths": "tests/workspace.spec.ts"}
+}

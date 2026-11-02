@@ -1,38 +1,35 @@
 import { useState } from 'react'
-import { ChevronRight, ChevronDown, RotateCcw, X, Plus } from 'lucide-react'
+import { ChevronRight, ChevronDown, RotateCcw, X, Plus, Settings2, Crosshair } from 'lucide-react'
+import { SearchField } from '../ui/SearchField'
 import { useEdithStore } from '../../store/useEdithStore'
 
 interface SectionProps {
   title: string
   children: React.ReactNode
+  defaultOpen?: boolean
 }
 
-function Section({ title, children }: SectionProps) {
-  const [open, setOpen] = useState(false)
+function Section({ title, children, defaultOpen = false }: SectionProps) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className={`obsidian-setting-section ${open ? 'open' : ''}`}>
-      <button className="obsidian-setting-header" onClick={() => setOpen(!open)}>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+    <div className={`obs-section ${open ? 'open' : ''}`}>
+      <button aria-expanded={open} className="obs-section-header" onClick={() => setOpen(!open)} type="button">
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span>{title}</span>
       </button>
-      {open && <div className="obsidian-setting-content">{children}</div>}
+      {open && <div className="obs-section-body">{children}</div>}
     </div>
   )
 }
 
-import { Settings2 } from "lucide-react"
-import { useEffect } from 'react'
+interface GraphSettingsProps {
+  onResetCamera?: () => void
+}
 
-export function GraphSettings() {
+export function GraphSettings({ onResetCamera }: GraphSettingsProps) {
   const [settingsOpen, setSettingsOpen] = useState(true)
   const settings = useEdithStore((s) => s.graphSettings)
   const setSettings = useEdithStore((s) => s.setGraphSettings)
-
-  useEffect(() => {
-    if (settings.forces && settings.forces.centerForce === 0.02) {
-      setSettings(s => ({...s, forces: { centerForce: 0.15, repelForce: 30, linkForce: 1, linkDistance: 40 }}))
-    }
-  }, [settings.forces, setSettings])
 
   const updateFilters = (k: keyof typeof settings.filters, v: any) =>
     setSettings((s) => ({ ...s, filters: { ...s.filters, [k]: v } }))
@@ -41,104 +38,270 @@ export function GraphSettings() {
   const updateForces = (k: keyof typeof settings.forces, v: any) =>
     setSettings((s) => ({ ...s, forces: { ...s.forces, [k]: v } }))
 
-  if (!settingsOpen) return <button className="obsidian-settings-toggle" onClick={() => setSettingsOpen(true)}><Settings2 size={16}/></button>
+  if (!settingsOpen) {
+    return (
+      <button
+        className="obs-toggle-btn"
+        onClick={() => setSettingsOpen(true)}
+        title="Open graph settings"
+        type="button"
+      >
+        <Settings2 size={16} />
+      </button>
+    )
+  }
+
+  const handleReset = () => {
+    setSettings((s) => ({
+      ...s,
+      filters: { search: '', orphans: true },
+      display: { arrows: false, textFade: 0.5, nodeSize: 1.2, linkThickness: 1.5, animate: true },
+      forces: { centerForce: 0.15, repelForce: 30, linkForce: 1, linkDistance: 40 }
+    }))
+    if (onResetCamera) onResetCamera()
+  }
 
   return (
-    <div className="obsidian-graph-settings">
-      <div className="obsidian-settings-top">
-        <button className="icon-btn" onClick={() => setSettings((s) => ({
-          ...s,
-          filters: { search: '', orphans: true },
-          display: { arrows: false, textFade: 0.5, nodeSize: 1, linkThickness: 1, animate: true },
-          forces: { centerForce: 0.1, repelForce: 50, linkForce: 1, linkDistance: 40 }
-        }))}><RotateCcw size={14}/></button>
-        <button className="icon-btn" onClick={() => setSettingsOpen(false)}><X size={14}/></button>
+    <div className="obs-graph-settings">
+      {/* Top bar */}
+      <div className="obs-settings-top">
+        {onResetCamera && (
+          <button
+            className="obs-icon-btn"
+            title="Center graph"
+            onClick={onResetCamera}
+            type="button"
+          >
+            <Crosshair size={13} />
+          </button>
+        )}
+        <button
+          className="obs-icon-btn"
+          title="Reset to defaults"
+          onClick={handleReset}
+          type="button"
+        >
+          <RotateCcw size={13} />
+        </button>
+        <button
+          className="obs-icon-btn"
+          title="Close settings"
+          onClick={() => setSettingsOpen(false)}
+          type="button"
+        >
+          <X size={13} />
+        </button>
       </div>
 
-      <Section title="Filters">
-        <div className="setting-row">
-          <input 
-            type="text" 
-            placeholder="Search files..." 
-            value={settings.filters.search}
-            onChange={(e) => updateFilters('search', e.target.value)}
-            className="obsidian-input"
-          />
+      {/* Filters */}
+      <Section title="Filters" defaultOpen>
+        <div className="obs-row">
+          <SearchField label="Search graph" value={settings.filters.search} onChange={(value) => updateFilters('search', value)}/>
         </div>
-        <label className="setting-row toggle-row">
-          <span>Show orphans</span>
-          <input 
-            type="checkbox" 
-            checked={settings.filters.orphans}
-            onChange={(e) => updateFilters('orphans', e.target.checked)}
-          />
-        </label>
+        <button type="button"
+          className="obs-row obs-toggle"
+          aria-pressed={settings.filters.orphans}
+          onClick={() => updateFilters('orphans', !settings.filters.orphans)}
+
+        >
+          <span>Orphans</span>
+          <div className={`obs-switch ${settings.filters.orphans ? 'on' : ''}`}>
+            <div className="obs-switch-thumb" />
+          </div>
+        </button>
       </Section>
 
+      {/* Groups */}
       <Section title="Groups">
         {(settings.groups || []).map((g, i) => (
-          <div key={i} className="setting-row group-row">
-            <input type="color" value={g.color} onChange={(e) => {
-              const newGroups = [...(settings.groups || [])]
-              newGroups[i].color = e.target.value
-              setSettings((s) => ({ ...s, groups: newGroups }))
-            }} />
-            <input type="text" value={g.query} onChange={(e) => {
-              const newGroups = [...(settings.groups || [])]
-              newGroups[i].query = e.target.value
-              setSettings((s) => ({ ...s, groups: newGroups }))
-            }} className="obsidian-input" />
-            <button className="icon-btn" onClick={() => {
-              const newGroups = (settings.groups || []).filter((_, idx) => idx !== i)
-              setSettings((s) => ({ ...s, groups: newGroups }))
-            }}><X size={12}/></button>
+          <div key={i} className="obs-row obs-group-row">
+            <input
+              aria-label={`Group ${i + 1} color`}
+              type="color"
+              value={g.color}
+              onChange={(e) => {
+                const newGroups = [...(settings.groups || [])]
+                newGroups[i].color = e.target.value
+                setSettings((s) => ({ ...s, groups: newGroups }))
+              }}
+              className="obs-color-pick"
+            />
+            <input
+              type="text"
+              aria-label={`Group ${i + 1} query`}
+              value={g.query}
+              placeholder="tag, path, or keyword..."
+              onChange={(e) => {
+                const newGroups = [...(settings.groups || [])]
+                newGroups[i].query = e.target.value
+                setSettings((s) => ({ ...s, groups: newGroups }))
+              }}
+              className="obs-input"
+            />
+            <button
+              aria-label={`Remove group ${i + 1}`}
+              className="obs-icon-btn sm"
+              onClick={() => {
+                const newGroups = (settings.groups || []).filter((_, idx) => idx !== i)
+                setSettings((s) => ({ ...s, groups: newGroups }))
+              }}
+              type="button"
+            >
+              <X size={11} />
+            </button>
           </div>
         ))}
-        <button className="obsidian-add-btn" onClick={() => {
-          setSettings((s) => ({ ...s, groups: [...s.groups, { query: '', color: '#ff5555' }] }))
-        }}><Plus size={12}/> New group</button>
+        <button
+          className="obs-add-group"
+          onClick={() => {
+            setSettings((s) => ({ ...s, groups: [...s.groups, { query: '', color: '#a882ff' }] }))
+          }}
+          type="button"
+        >
+          <Plus size={11} /> New group
+        </button>
       </Section>
 
+      {/* Display */}
       <Section title="Display">
-        <label className="setting-row toggle-row">
+        <button type="button"
+          className="obs-row obs-toggle"
+          aria-pressed={settings.display.arrows}
+          onClick={() => updateDisplay('arrows', !settings.display.arrows)}
+
+        >
           <span>Arrows</span>
-          <input type="checkbox" checked={settings.display.arrows} onChange={(e) => updateDisplay('arrows', e.target.checked)} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Text fade threshold</span>
-          <input type="range" min="0" max="1" step="0.1" value={settings.display.textFade} onChange={(e) => updateDisplay('textFade', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Node size</span>
-          <input type="range" min="0.1" max="3" step="0.1" value={settings.display.nodeSize} onChange={(e) => updateDisplay('nodeSize', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Link thickness</span>
-          <input type="range" min="0.1" max="3" step="0.1" value={settings.display.linkThickness} onChange={(e) => updateDisplay('linkThickness', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row toggle-row">
+          <div className={`obs-switch ${settings.display.arrows ? 'on' : ''}`}>
+            <div className="obs-switch-thumb" />
+          </div>
+        </button>
+        <button type="button"
+          className="obs-row obs-toggle"
+          aria-pressed={settings.display.animate}
+          onClick={() => updateDisplay('animate', !settings.display.animate)}
+
+        >
           <span>Animate</span>
-          <input type="checkbox" checked={settings.display.animate} onChange={(e) => updateDisplay('animate', e.target.checked)} />
-        </label>
+          <div className={`obs-switch ${settings.display.animate ? 'on' : ''}`}>
+            <div className="obs-switch-thumb" />
+          </div>
+        </button>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Text fade</span>
+            <span className="obs-slider-val">{settings.display.textFade.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            aria-label="Text fade"
+            value={settings.display.textFade}
+            onChange={(e) => updateDisplay('textFade', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Node size</span>
+            <span className="obs-slider-val">{settings.display.nodeSize.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            min="0.2"
+            max="3"
+            step="0.1"
+            aria-label="Node size"
+            value={settings.display.nodeSize}
+            onChange={(e) => updateDisplay('nodeSize', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Link thickness</span>
+            <span className="obs-slider-val">{settings.display.linkThickness.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            min="0.2"
+            max="4"
+            step="0.1"
+            aria-label="Link thickness"
+            value={settings.display.linkThickness}
+            onChange={(e) => updateDisplay('linkThickness', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
       </Section>
 
+      {/* Forces */}
       <Section title="Forces">
-        <label className="setting-row slider-row">
-          <span>Center force</span>
-          <input type="range" min="0" max="0.5" step="0.01" value={settings.forces.centerForce} onChange={(e) => updateForces('centerForce', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Repel force</span>
-          <input type="range" min="0" max="200" step="1" value={settings.forces.repelForce} onChange={(e) => updateForces('repelForce', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Link force</span>
-          <input type="range" min="0" max="2" step="0.1" value={settings.forces.linkForce} onChange={(e) => updateForces('linkForce', parseFloat(e.target.value))} />
-        </label>
-        <label className="setting-row slider-row">
-          <span>Link distance</span>
-          <input type="range" min="10" max="150" step="1" value={settings.forces.linkDistance} onChange={(e) => updateForces('linkDistance', parseFloat(e.target.value))} />
-        </label>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Center force</span>
+            <span className="obs-slider-val">{settings.forces.centerForce.toFixed(2)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="0.5"
+            step="0.01"
+            aria-label="Center force"
+            value={settings.forces.centerForce}
+            onChange={(e) => updateForces('centerForce', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Repel force</span>
+            <span className="obs-slider-val">{settings.forces.repelForce.toFixed(0)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="200"
+            step="1"
+            aria-label="Repel force"
+            value={settings.forces.repelForce}
+            onChange={(e) => updateForces('repelForce', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Link force</span>
+            <span className="obs-slider-val">{settings.forces.linkForce.toFixed(1)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
+            aria-label="Link force"
+            value={settings.forces.linkForce}
+            onChange={(e) => updateForces('linkForce', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
+        <div className="obs-slider-row">
+          <div className="obs-slider-label">
+            <span>Link distance</span>
+            <span className="obs-slider-val">{settings.forces.linkDistance.toFixed(0)}</span>
+          </div>
+          <input
+            type="range"
+            min="10"
+            max="180"
+            step="1"
+            aria-label="Link distance"
+            value={settings.forces.linkDistance}
+            onChange={(e) => updateForces('linkDistance', parseFloat(e.target.value))}
+            className="obs-range"
+          />
+        </div>
       </Section>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FileText, Columns2, Eye } from 'lucide-react'
 import { CodeMirrorEditor } from './CodeMirrorEditor'
 import { MarkdownPreview } from './MarkdownPreview'
@@ -11,6 +11,12 @@ export function EditorPane() {
   const editorDirty = useEdithStore((s) => s.editorDirty)
   const saveCurrentFile = useEdithStore((s) => s.saveCurrentFile)
   const [mode, setMode] = useState<ViewMode>('editor')
+
+  useEffect(() => {
+    const save = (event: KeyboardEvent) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveCurrentFile() } }
+    window.addEventListener('keydown', save)
+    return () => window.removeEventListener('keydown', save)
+  }, [saveCurrentFile])
 
   if (!selectedFile) {
     return (
@@ -30,7 +36,7 @@ export function EditorPane() {
       <div className="editor-toolbar">
         <span className="editor-filename">
           {fileName}
-          {editorDirty && <span className="dirty-dot"> •</span>}
+          <span className="editor-save-state" role="status">{editorDirty ? 'Saving…' : 'Saved in session'}</span>
         </span>
         <div className="editor-mode-buttons">
           <button

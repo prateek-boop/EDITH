@@ -1,75 +1,58 @@
-# EDITH Frontend v0.4 — QA Report
+# EDITH UI refinement — verification
 
-## Completion status
+Verified on 2026-10-23. This report supersedes the earlier visual-only v0.4 report.
 
-- [x] CSS design system
-- [x] Application shell layout
-- [x] Mobius strip 3D visualization
-- [x] 3D workspace graph visualization
-- [x] Typography
-- [x] Alignment and spacing
-- [x] Duplicate navigation removed
-- [x] UI components
-- [x] Responsive layout, including compact phone navigation
-- [x] Orange/amber restricted to approval and warning states
-- [x] Final source and production-build QA
+## Delivered behavior
 
-## Scope of this revision
+- Graphite surfaces, coral primary actions, a consistent type hierarchy, labeled desktop navigation, and phone bottom navigation.
+- Refined entry, example picker, agent, file editor, graph, memory, activity, history, and profile surfaces.
+- Shared search fields with accessible labels, clear controls, and no-results states.
+- App-owned dialogs with native modal focus containment, Escape cancellation, safe initial focus, and viewport bounds.
+- Note and folder names reject invalid/reserved names and duplicates. Folder renames update descendants. Deleting a folder clears an open descendant. Cancel preserves data.
+- Session autosave status and Ctrl/Cmd+S. Opening a file after saving reads the latest file tree.
+- Demo execution rejects overlapping submissions and repeated approval. Approval scope and verification are explicitly simulated.
+- View-level recovery, optional visualization fallback, offline feedback, keyboard graph browsing, and reduced-motion preferences.
+- Sign out clears transient identity, files, history, memory, graph context, and private graph filters.
+- Route splitting keeps editor and 3D dependencies out of the initial app bundle.
 
-This pass addresses the navigation-return problem and the visual-quality complaints from v0.3.
+## Checks and results
 
-### Navigation
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | Passed |
+| `npm run build` | Passed with Vite 7.3.7; optional editor/3D chunk warnings remain |
+| `npm run qa:a11y` | Passed after explicit waits for fully loaded views; 32.4 seconds |
+| `git diff --check` | Passed |
+| Premium UI auditor, `--mode strict` | Passed: 0 errors, 0 warnings |
+| DESIGN.md official CLI lint | Passed: 0 errors; 5 unused-color-reference warnings |
+| `npm audit fix` | Compatible patches applied; audit reported 0 vulnerabilities |
+| Browser scenarios in `tests/workspace.spec.ts` | All 11 distinct scenarios passed across the main run and targeted reruns |
+| Axe checks | No A/AA violations in tested entry, picker, primary views, approval, invalid-name dialog, mobile agent/graph, and profile preferences states |
 
-- Consolidated the duplicated EDITH return controls into the top-left brand button.
-- Kept the sidebar focused on the four workspace tools and converted core status into a non-navigation status surface.
-- Added `Esc` as a keyboard shortcut to return to the EDITH agent from any of the four tool views.
-- Workspace remains the only view that renders the project file explorer/editor.
+The 30-transition responsive matrix exceeded its original 45-second total timeout during a concurrent build. With a 90-second CI budget and the build complete, it passed in 32.6 seconds. The final targeted preference/sign-out check passed in 17.4 seconds. No retries suppress failing assertions.
 
-### Prompt workflow
+## Browser scenario coverage
 
-- Kept the command composer available after the first goal as a visible follow-up command surface.
-- Follow-up prompts can start a new controlled run from planning, approval, success, or failure states.
-- Preserved attachments and command-history navigation for subsequent prompts.
+1. Entry and accessibility across all five workspace views.
+2. Navigation visibility and document overflow at 1440×1000, 1024×768, 768×1024, 390×844, 320×568, and 844×390.
+3. Memory search, no results, clear, editing, confirmation cancellation, and removal.
+4. Note creation, rename, cancelled deletion, and deletion.
+5. Demo execution, busy-state duplicate prevention, approval, history, and offline status.
+6. Invalid filenames and duplicate-note errors preserve the dialog and expose accessible field errors.
+7. Failed lazy-view loading shows an app-owned reload recovery action.
+8. Mobile accessibility, keyboard graph filtering, clear-focus restoration, native toggle behavior, and reduced motion.
+9. Folder rename updates descendant paths, rapid file navigation preserves edits, and folder deletion clears its open descendant. Cancel receives initial focus.
+10. Browser Back restores views; the graph's non-drag list opens files.
+11. Profile switches work with the keyboard; reduced-motion class updates; sign-out clears history for the next session.
 
-### Visual system
+Chromium ran through Playwright using the system browser. `scripts/inspect-ui.mjs` captures desktop and phone screenshots into `/tmp` and performed an additional mobile axe pass after waiting for each view to finish loading on Workspace, Graph, Memory, and Activity.
 
-- Reworked the shell into floating matte/frosted surfaces with larger radii, softer inset highlights, restrained translucency, fewer visible border strokes, and quieter shadows.
-- Reworked top bar, sidebar, project bar, command input, workspace editor, graph controls, memory panels, activity panels, project switcher, and profile surface to use the same material system.
-- Red is now used as a controlled state/signal accent instead of the dominant fill color.
+## Bundle evidence
 
-### 3D Möbius
+Initial application JS is approximately 376 kB raw / 121 kB gzip, compared with approximately 1,187 kB raw before route splitting. Optional editor and Möbius chunks remain approximately 789 kB and 868 kB raw. Their size warnings are retained rather than hidden by increasing Vite's warning threshold.
 
-- Rebuilt the strip geometry with an explicitly closed Möbius seam rather than a visually open/reversed terminal edge.
-- Replaced the previous heavily red/shader-style surface with a cleaner pearlescent metal/glass material.
-- Added one restrained red state-reactive signal filament across the strip.
-- Added animated signal packets, soft orbit geometry, contact shadows, state-based motion speeds, and pointer/camera parallax.
-- Success/approval/failure states change the signal treatment without recoloring the entire UI.
-- Added adaptive canvas performance, lazy loading, accessible scene labels, and reduced-motion support.
+## Release boundaries
 
-### 3D graph
+This is a refined and tested frontend, not a completed production AI service. Agent execution and test outcomes are simulated; edits remain in session memory and are lost on reload. Production authentication requires server-side Google credential verification. Persistent storage, real model/tool execution, and Electron packaging still need implementation.
 
-- Reduced visual clutter by capping the spatial render to a cleaner working set.
-- Rebuilt nodes as translucent glass shells with internal cores.
-- Added a larger EDITH/goal core, softer active halos, curved low-noise links, and animated packets on active relationships.
-- Retained orbit, zoom, node selection, camera focus, search, working-set filtering, relationship filtering, and connection inspection.
-- Removed the gamer/HUD-style grid treatment from the graph stage.
-- Made the motion control stop node, edge, backdrop, and scene movement consistently and respect reduced-motion preferences by default.
-
-## Source QA
-
-- TS/TSX syntax parse: **26/26 files passed**.
-- TS/TSX transpile check (excluding `vite-env.d.ts` declaration file): **25/25 source files passed**.
-- Relative import resolution check: **0 missing relative imports**.
-- `package.json`: valid JSON.
-- CSS structural brace check: **848 opening / 848 closing braces**.
-
-## Build verification
-
-- `npm run typecheck`: passed.
-- `npm run build`: passed with Vite 7.3.6.
-- 2,561 modules transformed successfully.
-- The Mobius and graph scenes are emitted as lazy-loaded chunks, keeping the initial application bundle independent of scene code.
-
-## Backend boundary
-
-This remains a frontend prototype. Local workspace inspection is client-side and the agent execution flow is simulated. Real terminal execution, file mutation, LLM planning, policy enforcement, server-side Google credential verification, and persistent backend memory still require the EDITH backend/tool layer.
+Automated axe checks are not a full accessibility certification. Safari, Firefox, assistive technology, touch devices, live Google OAuth, and real backend failure paths were not covered. The screenshot/browser pass used Chromium with software WebGL; actual GPU performance needs device testing. No universal zero-defect claim is made.

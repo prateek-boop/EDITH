@@ -1,48 +1,149 @@
-# EDITH Frontend — Dynamic Workspace Build
+# EDITH — Sovereign Personal AI Operating System
 
-EDITH is a desktop-first, goal-driven Personal AI Operating System interface. This build focuses on a dynamic workspace experience rather than a chat UI.
+EDITH is a desktop-first, goal-driven Sovereign AI Operating System interface and execution workbench. It embeds the **Veliky Sovereign AI Pipeline** inside an air-gapped, permissioned loopback backend and packages as a native **Electron desktop application**.
 
-## What changed in v0.4
+---
 
-- Added an always-visible **EDITH / AI workspace** control above Workspace, Graph, Memory, and Activity, plus a contextual **Back to EDITH** pill in the top bar. Pressing `Esc` from any tool view also returns to the agent.
-- Reworked the application shell into floating matte/frosted surfaces with larger radii, softer highlights, fewer visible borders, quieter shadows, and more continuous negative space.
-- Rebuilt the 3D Möbius core around a properly closed Möbius topology, pearlescent metal/glass material, a single restrained red signal filament, animated signal packets, soft reflections, contact shadowing, and calmer state-reactive motion.
-- Rebuilt the 3D graph as a cleaner spatial constellation with glass node shells, internal cores, curved low-noise links, animated signal packets on active relationships, goal/task/memory context nodes, focus/search/filter controls, and a softer depth/fog treatment.
-- Workspace remains the only place where the project file explorer/editor is shown. Graph, Memory, Activity, and EDITH remain visually separate modes.
-- Local folder ingestion still builds a real client-side file tree, reads supported text files, detects common technologies, and derives folder/import relationships for the graph where possible.
-- EDITH execution streams live events and updates its working set while the Möbius and graph react to agent state.
-- Memory retains search, scope filtering, edit, and forget actions. Activity can switch between the current live execution session and historical audit entries.
-- Command input supports multiline goals, attachments, drag/drop, command history, Enter submit, and Shift+Enter newline.
-- The Graph bundle is lazy-loaded and is only rendered while the Graph view is open.
+## Architecture & Integration
 
-## Install and run
+```mermaid
+flowchart TD
+    subgraph DESKTOP ["Desktop Shell (Electron 45 / Node.js)"]
+        MAIN["electron/main.cjs (Main Process)"]
+        PRELOAD["electron/preload.cjs (Context Bridge)"]
+        SUBPROCESS["Process Supervisor (Spawns & Monitors Python Backend)"]
+    end
 
+    subgraph FRONTEND ["EDITH UI (React 19 / TypeScript / Zustand / Three.js)"]
+        UI_AGENT["AgentWorkspace & CommandInput"]
+        UI_STORE["useEdithStore.ts (Live SSE & State Sync)"]
+        UI_GATE["ApprovalCard & VerificationView"]
+        UI_GRAPH["3D Constellation Graph (Three.js)"]
+        UI_MOBIUS["3D Möbius Core"]
+    end
+
+    subgraph ENGINE ["Embedded Veliky Sovereign Engine (Python 3.10+ / Loopback)"]
+        GW["EDITH Loopback Gateway (server/gateway.py - Port 8766)"]
+        SVC["VelikyService (Vault, AST Indexer, Graph Traversal)"]
+        POL["Policy Engine (Two-Phase Propose & Commit Gate)"]
+        LLM["Local Model Client (Ollama / vLLM / Embedded Sovereign Engine)"]
+        VERIFY["Independent Evidence & Math Verifier"]
+        AUDIT["Hash-Chained Append-Only JSONL Audit (audit.jsonl)"]
+    end
+
+    MAIN --> SUBPROCESS
+    SUBPROCESS -->|Spawns & Terminates| GW
+    MAIN -->|Loads Window| FRONTEND
+    PRELOAD <--> FRONTEND
+
+    UI_AGENT --> UI_STORE
+    UI_STORE <-->|REST & Event Polling| GW
+    UI_GATE <-->|SHA-256 Commit| POL
+    UI_GRAPH <-->|Vault Graph & Link Topology| SVC
+
+    GW --> LLM
+    GW --> SVC
+    SVC --> VERIFY
+    SVC --> AUDIT
+```
+
+### Cognitive Execution Loop
+1. **SEE & UNDERSTAND**: Inspects repository layout, active workspace files, and indexed knowledge notes.
+2. **PLAN**: Decomposes the user's high-level goal into an execution sequence.
+3. **REASON**: Dispatches turns to Google Antigravity (`agy` CLI) or local OpenAI-compatible inference (Ollama `qwen2.5` / `deepseek-r1`) or the embedded sovereign engine with zero external telemetry.
+4. **ACT & PROPOSE**: Proposes workspace file mutations or reports with a cryptographic SHA-256 integrity hash.
+5. **HUMAN-IN-THE-LOOP APPROVAL**: The agent halts execution until the human signs the change.
+6. **VERIFY & AUDIT**: Validates results against evidence IDs and appends a tamper-evident hash-chained record to `audit.jsonl`.
+
+---
+
+## Google Antigravity (`agy`) Integration
+
+EDITH natively embeds the **Google Antigravity (`agy`)** CLI agent execution engine as its primary backend intelligence:
+
+- **Automatic CLI Discovery**: `server/gateway.py` automatically detects `agy` from PATH or `~/.local/bin/agy`.
+- **Stream-JSON Architecture**: Dispatches turns via `agy -p ... --output-format stream-json --json-schema ...`, capturing real-time agent tool invocations (`read_file`, `run_command`, AST lookups) and streaming them straight to EDITH's execution log.
+- **Model Routing**: Supports selectable models including:
+  - `gemini-3.8-flash-high` (Default - High Reasoning)
+  - `gemini-3.8-flash-medium` (Balanced)
+  - `gemini-3.8-flash-low` (Fast)
+  - `claude-sonnet-4-6` (Thinking)
+  - `claude-opus-4-6-thinking` (Deep Reasoning)
+  - `gpt-oss-120b-medium` (Medium)
+- **Sovereign Approval Gate**: Antigravity proposals adhere to the strict two-phase commit protocol:
+  1. `agy` formulates a structured mutation proposal containing target file, action (`create_file`, `modify_file`, `report`), content, and rationale.
+  2. The proposal is locked behind a cryptographic SHA-256 digest in EDITH's UI (`ApprovalCard`).
+  3. On user approval, the loopback gateway commits the change directly to the local workspace with hash-chained provenance recorded in `audit.jsonl`.
+
+---
+
+## Getting Started
+
+### 1. Requirements
+- Node.js 20+ (Node 26 recommended)
+- Python 3.10+
+- (Optional) Local Ollama or vLLM running on `http://127.0.0.1:11434` or `http://127.0.0.1:8000`
+
+### 2. Run the Electron Desktop App
 ```bash
-npm install
+# Launch Vite dev server + Sovereign Engine + Electron together
+npm run electron:dev
+```
+
+### 3. Run in Production Desktop Mode
+```bash
+# Build production bundle and launch Electron desktop app
+npm run electron:preview
+```
+
+### 4. Run Web Mode (Browser-only)
+```bash
+# Terminal 1: Start the Python Sovereign Engine
+python3 server/gateway.py --port 8766
+
+# Terminal 2: Start the frontend
 npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal.
+---
 
-## Production build
-
+## Quality Assurance & Verification
+Run the regression suite:
 ```bash
+npm run typecheck
 npm run build
-npm run preview
+npm run qa:browser
+npm run qa:a11y
 ```
 
-## Google authentication
 
-The frontend supports Google Identity Services when a Web Client ID is configured.
+## Google Authentication
 
-1. Copy `.env.example` to `.env`.
-2. Set `VITE_GOOGLE_CLIENT_ID` to your Google OAuth 2.0 Web Client ID.
-3. Add your local Vite origin and production origin in Google Cloud Console.
-4. Restart `npm run dev`.
+EDITH includes an integrated end-to-end Google OAuth 2.0 / Google Identity Services authentication system across both frontend, Electron desktop shell, and the Sovereign Loopback Gateway:
 
-Without a client ID, EDITH deliberately exposes a clearly labeled local demo session instead of pretending real Google OAuth is active.
+1. **Configuration**:
+   - Copy `.env.example` to `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Set `VITE_GOOGLE_CLIENT_ID` (and optionally `GOOGLE_CLIENT_ID`) to your Google OAuth 2.0 Web Client ID.
+   - In Google Cloud Console (*APIs & Services > Credentials*), add your origins:
+     - Authorized JavaScript origins: `http://localhost:5173`, `http://127.0.0.1:5173`
+   - Restart Vite / Sovereign Gateway (`npm run dev` or `npm run electron:dev`).
 
-> Production note: the browser can receive the Google ID credential, but a production EDITH backend should verify that credential server-side and issue its own secure session.
+2. **In-App Client ID Setup & Instant Google Login**:
+   - If not set in `.env`, clicking **Sign in with Google** opens the Google Authentication dialog where you can connect your Client ID on the fly (persisted to local browser storage), or use **Instant Google Sign-In (Demo Profile)** for instant local preview with realistic Google OAuth identity.
+
+3. **Backend Cryptographic Verification**:
+   - The Sovereign Gateway exposes `/api/auth/google`, `/api/auth/session`, `/api/auth/logout`, and `/api/auth/config`.
+   - Credentials are submitted and verified server-side via Google's OAuth2 verification endpoint (with resilient offline fallback), returning a cryptographic session token.
+   - Authentication events are recorded to the tamper-evident append-only audit trail (`audit.jsonl`).
+
+4. **Session Persistence**:
+   - Google sessions and tokens persist across page reloads and browser restarts. Signing out terminates the backend session and clears local credentials.
+
+5. **Desktop (Electron) Compatibility**:
+   - The Electron main process sanitizes the User-Agent header, preventing Google's `403: disallowed_useragent` error and allowing Google Identity popups to load natively.
 
 ## Opening a real local project
 

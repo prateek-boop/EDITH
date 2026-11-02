@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float } from '@react-three/drei'
-import { useReducedMotion } from 'framer-motion'
+import { useMotionPreference } from '../ui/useMotionPreference'
 import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import * as THREE from 'three'
 import type { AgentState } from '../../lib/types'
@@ -198,10 +198,12 @@ function CameraEase({dimmed,pointerTarget}:{dimmed:boolean;pointerTarget:Pointer
 
 export function MobiusScene({state,dimmed=false}:{state:AgentState;dimmed?:boolean}){
   const pointerTarget=useWindowPointerTarget()
-  const reducedMotion=useReducedMotion()
+  const reducedMotion=useMotionPreference()
   return <div className={dimmed?'mobius-canvas dimmed':'mobius-canvas'} data-state={state}>
     <div className="mobius-ambient" aria-hidden="true"><span/><span/></div>
     <Canvas
+      fallback={<div className="core-unavailable"><span className="static-core">∞</span><small>Workspace ready</small></div>}
+      role="img"
       aria-label={`Animated Mobius strip showing EDITH ${state.replace('_',' ')} state`}
       frameloop={reducedMotion?'demand':'always'}
       camera={{position:[0,.08,7.0],fov:32}}

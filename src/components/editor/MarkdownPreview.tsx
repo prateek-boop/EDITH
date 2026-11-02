@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useEdithStore } from '../../store/useEdithStore'
 import { resolveWikilink, flattenTree } from '../../lib/wikilinkParser'
@@ -25,6 +25,7 @@ export function MarkdownPreview() {
     <div className="markdown-preview">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={(url) => url.startsWith('wikilink://') ? url : defaultUrlTransform(url)}
         components={{
           a({ href, children }) {
             if (href?.startsWith('wikilink://')) {
@@ -32,16 +33,14 @@ export function MarkdownPreview() {
               const flat = flattenTree(files)
               const resolved = resolveWikilink(target, flat)
               return (
-                <a
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (resolved) openFileByPath(resolved.path)
-                  }}
+                <button type="button"
+                  disabled={!resolved}
+                  onClick={() => { if (resolved) openFileByPath(resolved.path) }}
                   className="wikilink-anchor"
                   style={{ cursor: 'pointer', color: 'var(--accent, #9d7cff)', textDecoration: 'underline' }}
                 >
                   {children}
-                </a>
+                </button>
               )
             }
             return (

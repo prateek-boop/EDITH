@@ -23,3 +23,17 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+test-results/
+playwright-report/
+
+# Python & Runtime
+.venv/
+__pycache__/
+*.py[cod]
+.runtime/
+server/.runtime/
+server/__pycache__/
+*.sqlite3
+*.db
+

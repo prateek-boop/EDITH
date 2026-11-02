@@ -391,6 +391,101 @@ code, pre {
   color: var(--text-dim);
 }
 
+.demo-button {
+  min-width: 320px;
+  height: 40px;
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.18s;
+}
+
+.demo-button:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.google-auth-modal {
+  width: min(420px, 92vw);
+}
+
+.google-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.google-modal-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.google-modal-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.google-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.google-modal-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 16px 0;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.google-modal-divider::before,
+.google-modal-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--surface-border);
+}
+.google-modal-divider span {
+  padding: 0 10px;
+}
+
+.google-demo-instant-btn {
+  width: 100%;
+  height: 38px;
+  border-radius: 6px;
+  border: 1px solid var(--surface-border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: 0.18s;
+}
+.google-demo-instant-btn:hover {
+  border-color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
 .auth-links {
   margin-top: 18px;
   color: var(--text-dim);
@@ -2646,7 +2741,8 @@ code, pre {
 }
 
 .tree-context {
-  height: 54px;
+  height: auto;
+  min-height: 54px;
   border: none;
   background: transparent;
   display: flex;
@@ -5029,249 +5125,289 @@ code, pre {
 }
 
 /* ==========================================================================
-   ULTRA-SLEEK COMPACT CHAT INTERFACE OVERRIDES V3
+   Obsidian Graph View & Stage
    ========================================================================== */
-
-/* 1. Global Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
-
-/* 2. Thinner Sidebar */
-.body-shell { grid-template-columns: 72px minmax(0, 1fr) !important; }
-.topbar { grid-template-columns: 72px minmax(0, 1fr) 300px !important; }
-.edith-logo { padding: 0 !important; justify-content: center !important; gap: 4px !important; }
-.edith-logo span { display: inline-block !important; font-size: 10px !important; letter-spacing: 2px !important; }
-.sidebar .nav-item span:not(.nav-icon), .sidebar .nav-item b, .sidebar-divider, .sidebar-version, .sidebar-core > span:not(.core-status-orb) { display: none !important; }
-.sidebar .nav-item { justify-content: center !important; padding: 12px !important; }
-.sidebar-core { justify-content: center !important; padding: 12px !important; background: transparent !important; border: none !important; }
-
-/* 3. Transparent Execution Overlay */
-.execution-overlay { background: transparent !important; padding: 30px 24px !important; inset: 0 !important; width: 100% !important; display: flex !important; flex-direction: column !important; align-items: center !important; overflow-y: auto !important; }
-.execution-overlay > * { width: 100% !important; max-width: 840px !important; }
-.mobius-layer.working { inset: 0 !important; opacity: 0.15 !important; transform: scale(1) !important; pointer-events: none !important; }
-
-/* 4. Ultra-Sleek Command Input */
-.command-box { max-width: 840px !important; width: 95% !important; margin: 0 auto !important; border-radius: 20px !important; }
-.command-box textarea { min-height: 44px !important; padding: 14px 18px 0 !important; font-size: 14px !important; line-height: 1.4 !important; height: 44px !important; }
-.command-tools { height: 36px !important; padding: 0 14px 8px !important; }
-.compact-command textarea { min-height: 42px !important; padding: 12px 16px 0 !important; height: 42px !important; font-size: 14px !important; }
-.compact-command .command-tools { height: 34px !important; padding: 0 12px 8px !important; }
-
-/* Center execution log content */
-.execution-head, .execution-stream, .approval-card, .verification, .failed-state, .success-actions, .execution-stream-details {
-  max-width: 840px !important; width: 92% !important; margin-left: auto !important; margin-right: auto !important;
+.obsidian-graph-view {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0f;
 }
 
-
-
-
-/* Reduce execution stream and approval card sizes */
-.execution-stream-details { margin: 0 auto 16px !important; background: rgba(255, 255, 255, 0.02) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: var(--radius-md) !important; overflow: hidden !important; }
-.execution-summary { display: flex !important; align-items: center !important; gap: 10px !important; padding: 8px 12px !important; cursor: pointer !important; font-size: 13px !important; font-weight: 500 !important; color: var(--text-secondary) !important; user-select: none !important; }
-.execution-summary:hover { background: rgba(255, 255, 255, 0.03) !important; color: var(--text-primary) !important; }
-.execution-stream-details .execution-log-list { padding: 0 16px 16px !important; border-top: 1px solid rgba(255, 255, 255, 0.03) !important; }
-
-.approval-card { margin: 12px auto 16px !important; padding: 12px 16px !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 15px rgba(0, 0, 0, 0.15) !important; background: rgba(20, 16, 10, 0.95) !important; position: relative !important; bottom: auto !important; z-index: 1 !important; }
-.approval-title { margin-bottom: 12px !important; }
-.approval-reason p { font-size: 12px !important; }
-.verification { padding: 14px 16px !important; margin-top: 12px !important; }
-
-/* Fix massive text sizes */
-.execution-head h1 { font-size: 15px !important; font-weight: 500 !important; letter-spacing: normal !important; margin: 4px 0 6px !important; }
-
-/* Make idle content centered perfectly */
-.idle-content { align-items: center !important; text-align: center !important; }
-.idle-copy { margin: 0 auto !important; }
-.idle-copy h1 { font-size: 18px !important; }
-
-/* Prevent media queries from breaking this */
-@media (max-width: 1400px) { .execution-overlay { width: 100% !important; inset: 0 !important; } }
-@media (max-width: 900px) { .execution-overlay { width: 100% !important; inset: 0 !important; } .mobius-layer.working { inset: 0 !important; } }
-@media (max-width: 640px) { .execution-overlay { width: 100% !important; inset: 0 !important; } }
-
-/* Remove scrollbar in idle state */
-.agent-view.idle {
-  overflow: hidden !important;
+.obsidian-graph-stage {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0f;
 }
 
-/* Ensure the wrapper doesn't overflow */
-.agent-workspace {
-  overflow: hidden !important;
+.graph-canvas-container.obsidian-graph-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
 }
 
-/* Guarantee textarea height regardless of state */
-body .agent-view.idle .command-box textarea,
-body .agent-view .command-box textarea,
-body .compact-command textarea,
-.command-box textarea {
-  min-height: 48px !important;
-  height: 48px !important;
-  padding: 16px 20px 0 !important;
-  font-size: 14px !important;
+.graph-canvas-el {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* Eliminate vertical bloat */
-.command-tools {
-  height: 38px !important;
-  padding: 0 14px 6px !important;
-  margin-top: -6px !important;
+/* Badge count indicator */
+.obsidian-graph-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: rgba(18, 18, 26, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(235, 235, 245, 0.75);
+  pointer-events: none;
+  z-index: 20;
+  user-select: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
-/* Remove extra shortcut text */
-.command-shortcut {
-  display: none !important;
+.obsidian-graph-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.85);
+  display: inline-block;
 }
 
-/* Match quick goals width to the input box */
-.quick-goals {
-  max-width: 840px !important;
-  width: 92% !important;
-  margin: 40px auto 0 !important;
+.obsidian-graph-badge-sep {
+  opacity: 0.35;
 }
 
-/* Fix readout box text alignments */
-.readout {
-  text-align: center !important;
-  align-items: center !important;
-  padding: 14px 16px !important;
+/* Canvas navigation buttons (zoom / reset) */
+.obsidian-graph-nav-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 20;
 }
 
-.readout.right {
-  text-align: center !important;
-  align-items: center !important;
+.obsidian-graph-nav-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: rgba(18, 18, 26, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(235, 235, 245, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Center Execute button and increase quick goals distance */
-.command-tools {
-  position: relative !important;
+.obsidian-graph-nav-btn:hover {
+  background: rgba(35, 35, 48, 0.95);
+  color: #ffffff;
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: translateY(-1px);
 }
 
-
-
-.quick-goals {
-  margin-top: 30px !important;
+.obsidian-graph-nav-btn:active {
+  transform: scale(0.96);
 }
 
-/* Right-align and vertically center the execute button */
-.command-box {
-  position: relative !important;
+/* Tooltip */
+.obsidian-graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(15, 15, 22, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  max-width: 260px;
+  user-select: none;
 }
 
-.command-tools .execute-button {
-  position: absolute !important;
-  right: 16px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
+.obsidian-graph-tooltip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
 }
 
-/* Prevent text from going under the button */
-body .agent-view.idle .command-box textarea,
-body .agent-view .command-box textarea,
-body .compact-command textarea,
-.command-box textarea {
-  padding-right: 130px !important;
+.obsidian-graph-tooltip-meta {
+  font-size: 11px;
+  color: #a78bfa;
+  margin: 3px 0 0;
 }
 
-.command-tools { position: static !important; }
-
-.success-actions {
-  justify-content: center !important;
-  margin-top: 20px !important;
+.obsidian-graph-tooltip-path {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 4px 0 0;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Fix textarea text moving up */
-body .agent-view.idle .command-box textarea,
-body .agent-view .command-box textarea,
-body .compact-command textarea,
-.command-box textarea {
-  height: auto !important;
-  min-height: 48px !important;
-  padding: 26px 130px 10px 24px !important;
-  line-height: 20px !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
+/* Empty state */
+.obsidian-graph-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  gap: 8px;
+  user-select: none;
 }
 
-
-/* Stick the follow-up text box to the bottom */
-.follow-up-composer {
-  margin-top: auto !important;
-  position: sticky !important;
-  bottom: 0 !important;
-  padding-bottom: 32px !important;
-  padding-top: 32px !important;
-  border-bottom: none !important;
-  z-index: 100 !important;
-  width: 100% !important;
-  left: 0 !important;
+.obsidian-graph-empty-icon {
+  margin-bottom: 8px;
+  opacity: 0.8;
 }
 
-.follow-up-composer .section-label {
-  display: none !important;
+.obsidian-graph-empty strong {
+  font-size: 15px;
+  color: #ffffff;
 }
 
-
-
-/* Forcefully push the idle content down */
-body .agent-view.idle .idle-content {
+.obsidian-graph-empty span {
+  font-size: 12px;
+  color: #a1a1aa;
+  max-width: 280px;
 }
 
-/* Safely nudge the idle text down without causing overflow cuts */
-body .agent-view.idle .idle-copy {
-  margin-top: calc(8vh + 50px) !important;
+/* ==========================================================================
+   Obsidian Graph Settings Panel
+   ========================================================================== */
+.obs-toggle-btn,
+.obsidian-settings-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(18, 18, 26, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(235, 235, 245, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-/* Obsidian Graph Settings */
+.obs-toggle-btn:hover,
+.obsidian-settings-toggle:hover {
+  background: rgba(30, 30, 42, 0.95);
+  color: #ffffff;
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: scale(1.05);
+}
+
+.obs-graph-settings,
 .obsidian-graph-settings {
   position: absolute;
   top: 16px;
   right: 16px;
-  width: 260px;
-  background: var(--surface-bg, #1e1e1e);
-  border: none;
-  border-radius: 6px;
-  z-index: 100;
+  width: 270px;
+  max-height: calc(100% - 32px);
+  background: rgba(14, 14, 20, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  color: var(--text-primary, #cccccc);
-  font-size: 13px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+  color: rgba(235, 235, 245, 0.9);
+  font-size: 12px;
+  overflow-y: auto;
+  user-select: none;
 }
 
+.obs-settings-top,
 .obsidian-settings-top {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding-bottom: 4px;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.obs-icon-btn,
 .obsidian-settings-top .icon-btn {
   background: transparent;
   border: none;
-  color: #888;
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  padding: 4px;
+  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-}
-.obsidian-settings-top .icon-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  border-radius: 5px;
+  transition: all 0.15s ease;
 }
 
+.obs-icon-btn:hover,
+.obsidian-settings-top .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.obs-icon-btn.sm {
+  padding: 2px 4px;
+}
+
+.obs-section,
 .obsidian-setting-section {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+.obs-section:last-child,
 .obsidian-setting-section:last-child {
   border-bottom: none;
 }
 
+.obs-section-header,
 .obsidian-setting-header {
   display: flex;
   align-items: center;
@@ -5279,130 +5415,188 @@ body .agent-view.idle .idle-copy {
   width: 100%;
   background: transparent;
   border: none;
-  color: #eeeeee;
-  padding: 8px 4px;
+  color: rgba(235, 235, 245, 0.85);
+  padding: 8px 2px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   text-align: left;
-}
-.obsidian-setting-header:hover {
-  background: rgba(255,255,255,0.05);
+  letter-spacing: 0.02em;
+  transition: color 0.15s ease;
 }
 
+.obs-section-header:hover,
+.obsidian-setting-header:hover {
+  color: #ffffff;
+}
+
+.obs-section-body,
 .obsidian-setting-content {
-  padding: 8px 4px 12px 16px;
+  padding: 4px 2px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
+.obs-row,
 .setting-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
+.obs-input,
+.obsidian-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 5px 8px;
+  border-radius: 5px;
+  width: 100%;
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.obs-input:focus,
+.obsidian-input:focus {
+  border-color: #a78bfa;
+}
+
+.obs-row.obs-toggle,
 .setting-row.toggle-row {
   justify-content: space-between;
+  cursor: pointer;
+  padding: 2px 0;
 }
+
+.obs-row.obs-toggle span,
+.setting-row.toggle-row span {
+  color: rgba(235, 235, 245, 0.7);
+  font-size: 11px;
+}
+
+.obs-switch {
+  width: 32px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.obs-switch.on {
+  background: #7c3aed;
+}
+
+.obs-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.obs-switch.on .obs-switch-thumb {
+  transform: translateX(14px);
+}
+
+.obs-slider-row,
 .setting-row.slider-row {
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 4px;
 }
+
+.obs-slider-label {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(235, 235, 245, 0.65);
+  font-size: 11px;
+}
+
+.obs-slider-val {
+  color: #a78bfa;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+}
+
+.obs-range,
 .setting-row.slider-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-}
-
-.obsidian-input {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  width: 100%;
-  font-size: 12px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
   outline: none;
-}
-.obsidian-input:focus {
-  border-color: #a882ff;
+  cursor: pointer;
 }
 
+.obs-range::-webkit-slider-thumb,
+.setting-row.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #a78bfa;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(167, 139, 250, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.obs-range::-webkit-slider-thumb:hover,
+.setting-row.slider-row input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.obs-group-row,
 .group-row {
   display: flex;
   gap: 6px;
   align-items: center;
 }
+
+.obs-color-pick,
 .group-row input[type="color"] {
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  width: 22px;
+  height: 22px;
   border: none;
+  padding: 0;
   border-radius: 4px;
   cursor: pointer;
   background: transparent;
+  flex-shrink: 0;
 }
 
+.obs-add-group,
 .obsidian-add-btn {
   background: transparent;
-  border: 1px dashed rgba(255,255,255,0.2);
-  color: #aaa;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
   padding: 6px;
-  border-radius: 4px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: 11px;
+  transition: all 0.15s ease;
+  width: 100%;
 }
+
+.obs-add-group:hover,
 .obsidian-add-btn:hover {
-  border-color: #fff;
-  color: #fff;
-}
-
-.obsidian-settings-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  background: rgba(30, 30, 30, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #a0a0a0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 50;
-  transition: all 0.2s;
-}
-
-.obsidian-settings-toggle:hover {
-  background: rgba(40, 40, 40, 0.8);
-  color: #ffffff;
-}
-
-/* Obsidian Overhaul */
-.graph-stage {
-    background: var(--surface-bg, #1e1e1e) !important;
-    box-shadow: none !important;
-}
-.graph-soft-light {
-    display: none !important;
-}
-.graph-node-label {
-    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Microsoft YaHei Light", sans-serif;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    color: #a8a8a8 !important;
-    text-shadow: none !important;
-    background: transparent !important;
-}
-.graph-node-label.hovered, .graph-node-label.selected {
-    color: #dfdfdf !important;
+  border-color: #a78bfa;
+  color: #a78bfa;
 }
 
 /* ==========================================================================

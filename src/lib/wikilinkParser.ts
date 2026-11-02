@@ -2,10 +2,12 @@ import type { FileNode } from './types'
 
 // Matches [[Target]], [[Target#section]], [[Target|alias]], [[Target#section|alias]]
 const WIKILINK_REGEX = /\[\[([^\[\]|#]+?)(?:#[^\[\]|]*)?(?:\|[^\[\]]*?)?\]\]/g
+// Matches [Label](./path/to/target.ext) markdown links
+const MD_LINK_REGEX = /\[[^\]]*\]\(([^)]+?\.(?:md|tsx?|jsx?|py|json|html|css))\)/g
 
 /**
- * Extract all wikilink targets from markdown content.
- * Returns basenames without .md extension, deduplicated.
+ * Extract all link targets from markdown content.
+ * Returns targets deduplicated.
  */
 export function extractWikilinks(content: string): string[] {
   const targets: string[] = []
@@ -15,6 +17,16 @@ export function extractWikilinks(content: string): string[] {
   while ((match = WIKILINK_REGEX.exec(content)) !== null) {
     const target = match[1].trim()
     if (target) targets.push(target)
+  }
+
+  MD_LINK_REGEX.lastIndex = 0
+  while ((match = MD_LINK_REGEX.exec(content)) !== null) {
+    const raw = match[1].trim()
+    // Ignore external URLs
+    if (raw && !raw.startsWith('http://') && !raw.startsWith('https://') && !raw.startsWith('#')) {
+      const clean = raw.replace(/^(\.\/|\.\.\/)+/, '').split(/[?#]/)[0]
+      if (clean) targets.push(clean)
+    }
   }
 
   return [...new Set(targets)]
@@ -99,44 +111,39 @@ export function buildWikilinkGraph(files: FileNode[], graphEdges?: { source: str
     }
   }
 
-  const inboundCount: Record<string, number> = {}
-  for (const [, targets] of Object.entries(linkMap)) {
-    for (const target of targets) {
-      const resolved = resolveWikilink(target, allFiles)
-      if (resolved) {
-        inboundCount[resolved.path] = (inboundCount[resolved.path] ?? 0) + 1
-      }
-    }
-  }
-
   const edgeSet = new Set<string>()
   const edges: { source: string; target: string }[] = []
-  
-  // Add explicit wikilinks
+  const inboundCount: Record<string, number> = {}
+  const outboundCount: Record<string, number> = {}
+
+  // Add explicit wikilinks & markdown links
   for (const [sourcePath, targets] of Object.entries(linkMap)) {
     for (const target of targets) {
       const resolved = resolveWikilink(target, allFiles)
-      if (resolved) {
+      if (resolved && resolved.path !== sourcePath) {
         const key = `${sourcePath}->${resolved.path}`
         if (!edgeSet.has(key)) {
           edgeSet.add(key)
           edges.push({ source: sourcePath, target: resolved.path })
+          inboundCount[resolved.path] = (inboundCount[resolved.path] ?? 0) + 1
+          outboundCount[sourcePath] = (outboundCount[sourcePath] ?? 0) + 1
         }
       }
     }
   }
 
-  // Add automatic code imports if provided
+  // Add automatic code imports and structural relationships if provided
+  const fileIdSet = new Set(allFiles.map((f) => f.path))
   if (graphEdges) {
     for (const edge of graphEdges) {
-      if (edge.relation === 'imports') {
+      // Connect file to file edges (imports, module, sibling)
+      if (fileIdSet.has(edge.source) && fileIdSet.has(edge.target) && edge.source !== edge.target) {
         const key = `${edge.source}->${edge.target}`
         if (!edgeSet.has(key)) {
           edgeSet.add(key)
           edges.push({ source: edge.source, target: edge.target })
           inboundCount[edge.target] = (inboundCount[edge.target] ?? 0) + 1
-          if (!linkMap[edge.source]) linkMap[edge.source] = []
-          linkMap[edge.source].push(edge.target) // Hack to increment source linkCount later
+          outboundCount[edge.source] = (outboundCount[edge.source] ?? 0) + 1
         }
       }
     }
@@ -148,7 +155,7 @@ export function buildWikilinkGraph(files: FileNode[], graphEdges?: { source: str
       id: f.path,
       label: isMd ? basename(f.name, '.md') : f.name,
       group: dirname(f.path) || 'root',
-      linkCount: (inboundCount[f.path] ?? 0) + (linkMap[f.path]?.length ?? 0),
+      linkCount: (inboundCount[f.path] ?? 0) + (outboundCount[f.path] ?? 0),
     }
   })
 

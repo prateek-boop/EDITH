@@ -7,6 +7,9 @@ export interface AuthUser {
   email: string
   picture?: string
   provider: 'google' | 'demo'
+  sessionToken?: string
+  sub?: string
+  verified?: boolean
 }
 
 export interface Workspace {
@@ -84,3 +87,45 @@ export interface ExecutionLogItem {
   status: 'running' | 'done' | 'waiting' | 'error'
   file?: string
 }
+
+export interface ProposalItem {
+  id: string
+  title: string
+  path: string
+  targetFile?: string
+  action?: 'modify_file' | 'create_file' | 'vault_note' | 'report' | string
+  summary?: string
+  explanation?: string
+  content: string
+  finalContent?: string
+  expectedSha256?: string
+  sha256: string
+  expiresAt?: number
+  status: 'pending' | 'written'
+  role?: string
+}
+
+export interface BackendStatus {
+  connected: boolean
+  engine: string
+  vaultName: string
+  noteCount: number
+  role: string
+  canWrite: boolean
+  mode: 'local-llm' | 'embedded-sovereign' | 'antigravity'
+  agyAvailable?: boolean
+  agyVersion?: string
+  agyModel?: string
+  models: Array<{
+    role: string
+    endpoint: string
+    model: string
+    connected: boolean
+    provider?: string
+    version?: string
+    availableModels?: string[]
+    modelDetails?: Array<{ id: string; name: string; role: string; default?: boolean }>
+    error?: string | null
+  }>
+}
+

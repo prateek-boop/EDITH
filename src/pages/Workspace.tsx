@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { AppShell } from '../components/layout/AppShell'
-import { AgentWorkspace } from '../components/agent/AgentWorkspace'
-import { FilesView } from '../components/files/FilesView'
-import { MemoryView } from '../components/memory/MemoryView'
-import { ActivityView } from '../components/activity/ActivityView'
 import { useEdithStore } from '../store/useEdithStore'
 
+const AgentWorkspace=lazy(()=>import('../components/agent/AgentWorkspace').then((mod)=>({default:mod.AgentWorkspace})))
+const FilesView=lazy(()=>import('../components/files/FilesView').then((mod)=>({default:mod.FilesView})))
+const MemoryView=lazy(()=>import('../components/memory/MemoryView').then((mod)=>({default:mod.MemoryView})))
+const ActivityView=lazy(()=>import('../components/activity/ActivityView').then((mod)=>({default:mod.ActivityView})))
 const GraphView=lazy(()=>import('../components/graph/GraphView').then((mod)=>({default:mod.GraphView})))
 
 export function WorkspacePage() {
@@ -15,7 +15,7 @@ export function WorkspacePage() {
 
   useEffect(()=>{
     const syncFromUrl=()=>{
-      const requestedView=new URLSearchParams(window.location.search).get('view')
+      const requestedView=new URLSearchParams(window.location.search).get('view') || 'agent'
       if(requestedView&&['agent','workspace','graph','memory','activity'].includes(requestedView)) setView(requestedView as Parameters<typeof setView>[0])
     }
     syncFromUrl()
@@ -33,7 +33,8 @@ export function WorkspacePage() {
 
   useEffect(()=>{
     const onKey=(event:KeyboardEvent)=>{
-      if(event.key==='Escape'&&useEdithStore.getState().activeView!=='agent') setView('agent')
+      const store = useEdithStore.getState()
+      if(event.key==='Escape' && !event.defaultPrevented && !document.querySelector('dialog[open]') && !store.profileOpen && !store.historyOpen && !store.projectSwitcherOpen && !['INPUT','TEXTAREA'].includes((event.target as HTMLElement)?.tagName) && store.activeView!=='agent') setView('agent')
     }
     window.addEventListener('keydown',onKey)
     return()=>window.removeEventListener('keydown',onKey)

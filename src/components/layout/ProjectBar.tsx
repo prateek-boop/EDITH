@@ -13,12 +13,12 @@ export function ProjectBar(){
   const done=plan.filter((p)=>p.status==='done').length
   const executionProgress=state==='idle'?ws?.progress??0:Math.round(done/Math.max(plan.length,1)*100)
   const launch=(id:string)=>{window.open(`${window.location.origin}${window.location.pathname}?workspace=${encodeURIComponent(id)}`,'_blank','noopener,noreferrer')}
-  const options=ws?.source==='local'?[ws,...workspaces]:workspaces
+  const options=workspaces
   return <>
     <AnimatePresence>{open&&<motion.div className="project-popover" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:8}}>
       <div className="popover-title">SWITCH PROJECT <small>opens a new EDITH window</small></div>
       {options.map((w)=><button key={w.id} className="project-option" onClick={()=>w.source==='local'?window.open(window.location.href,'_blank','noopener,noreferrer'):launch(w.id)}><span className={ws?.id===w.id?'status-dot active':'status-dot'}/><span><b>{w.name}</b><em>{w.tech.slice(0,3).join(' · ')}</em></span><small>{w.progress}%</small></button>)}
-      <button className="open-new" onClick={()=>useEdithStore.getState().setStage('picker')}><FolderPlus size={14}/>Open New Project</button>
+      <button className="open-new" onClick={()=>{setOpen(false);useEdithStore.getState().setStage('picker')}}><FolderPlus size={14}/>Open New Project</button>
     </motion.div>}</AnimatePresence>
     <footer className="projectbar upgraded">
       <div className="project-ident" style={{ flexDirection: 'row', gap: '8px' }}>
@@ -30,10 +30,10 @@ export function ProjectBar(){
         <span style={{ fontSize: '10px' }}>{state==='idle'?`${executionProgress}% PROJECT`:`${executionProgress}% EXECUTION`}</span>
       </div>
       <div className="project-end" style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingRight: '16px' }}>
-        <button className="switch-btn" onClick={()=>setOpen(!open)} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+        <button aria-expanded={open} className="switch-btn" onClick={()=>setOpen(!open)} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
           Switch Project <ChevronUp size={13}/>
         </button>
-        <button className="bottom-profile" onClick={()=>setProfile(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <button aria-label="Open profile" className="bottom-profile" onClick={()=>setProfile(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <CircleUserRound size={14}/>
         </button>
       </div>

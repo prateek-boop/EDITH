@@ -43,6 +43,7 @@ export function CodeMirrorEditor() {
       value={content}
       height="100%"
       extensions={[
+        EditorView.contentAttributes.of({ 'aria-label': 'File editor' }),
         markdown(),
         oneDark,
         EditorView.lineWrapping,

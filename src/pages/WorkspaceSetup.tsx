@@ -3,6 +3,7 @@ import { FolderOpen, Upload, Check, LoaderCircle, GitBranch, Boxes, FileCode2, S
 import { motion, AnimatePresence } from 'framer-motion'
 import { workspaces } from '../mock/data'
 import { useEdithStore } from '../store/useEdithStore'
+import { getFilesFromDataTransfer } from '../lib/workspace'
 
 export function WorkspaceSetupPage() {
   const stage = useEdithStore((s) => s.stage)
@@ -13,6 +14,7 @@ export function WorkspaceSetupPage() {
   const indexing = useEdithStore((s) => s.isIndexingWorkspace)
   const graphNodes = useEdithStore((s) => s.graphNodes)
   const graphEdges = useEdithStore((s) => s.graphEdges)
+  const [error, setError] = useState('')
   const [completed, setCompleted] = useState(0)
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -34,9 +36,18 @@ export function WorkspaceSetupPage() {
     return () => ids.forEach(clearTimeout)
   }, [stage, setStage, initSteps])
 
-  const openLocal = async (files: FileList | null) => {
-    if (!files?.length) return
-    await loadLocalWorkspace(files)
+  const openLocal = async (files: FileList | File[] | null) => {
+    if (!files) return
+    const count = Array.isArray(files) ? files.length : files.length
+    if (!count) return
+    if (indexing) return
+    setError('')
+    try {
+      await loadLocalWorkspace(files)
+    } catch {
+      setError('This folder couldn’t be opened. Try selecting a smaller project folder.')
+      useEdithStore.setState({ isIndexingWorkspace: false })
+    }
   }
 
   if (stage === 'initializing') return (
@@ -59,19 +70,49 @@ export function WorkspaceSetupPage() {
   )
 
   return (
-    <main className="setup-page" onDragOver={(e)=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={(e)=>{e.preventDefault();setDragging(false);void openLocal(e.dataTransfer.files)}}>
+    <main
+      className="setup-page"
+      onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={async (e) => {
+        e.preventDefault()
+        setDragging(false)
+        try {
+          const files = await getFilesFromDataTransfer(e.dataTransfer)
+          if (files.length) {
+            void openLocal(files)
+            return
+          }
+        } catch {
+          // Fallback
+        }
+        void openLocal(e.dataTransfer.files)
+      }}
+    >
       <div className="setup-grid-bg" />
       <section className="picker-wrap">
         <motion.div className="brand-word small" initial={{opacity:0,y:-8}} animate={{opacity:1,y:0}}>EDITH</motion.div>
         <div className="eyebrow centered">CHOOSE YOUR WORKSPACE</div>
-        <motion.button className={`folder-drop ${dragging?'dragging':''}`} onClick={() => inputRef.current?.click()} whileHover={{y:-2}} whileTap={{scale:.995}}>
+        <motion.button disabled={indexing} className={`folder-drop ${dragging?'dragging':''}`} onClick={() => inputRef.current?.click()} whileHover={{y:-2}} whileTap={{scale:.995}}>
           <div className="folder-visual"><FolderOpen size={32}/><span className="folder-pulse"/></div>
           <strong>{indexing ? 'Reading Project…' : 'Open Project Folder'}</strong>
           <span>EDITH will map files, project structure, and local relationships.</span>
-          <small><Upload size={13}/> Select a folder or drag it here</small>
+          <small><Upload size={13}/> Choose a folder from your device</small>
         </motion.button>
-        <input ref={inputRef} className="hidden-input" type="file" multiple {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)} onChange={(e)=>void openLocal(e.target.files)}/>
+        <input
+          ref={inputRef}
+          className="hidden-input"
+          type="file"
+          multiple
+          {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+          onChange={(e) => {
+            if (e.target.files) void openLocal(e.target.files)
+            e.target.value = ''
+          }}
+        />
 
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <p className="session-note">Sovereign Boundary Active: Workspace mutations require explicit cryptographic human approval before commit.</p>
         <div className="picker-capabilities">
           <span><FileCode2 size={13}/> File context</span>
           <span><GitBranch size={13}/> Git awareness</span>
@@ -79,9 +120,9 @@ export function WorkspaceSetupPage() {
         </div>
 
         <div className="recent-block">
-          <div className="recent-title-row"><div className="eyebrow">RECENT WORKSPACES</div><small>Open in a separate EDITH context</small></div>
-          {workspaces.slice(0,3).map((w, i) => <motion.button className="recent-row" key={w.id} onClick={()=>selectWorkspace(w)} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:.08*i}}>
-            <span className="status-dot"/><span><b>{w.name}</b><em>{w.tech.slice(0,3).join(' · ')}</em></span><small>{w.path}</small><ArrowRight size={14}/>
+          <div className="recent-title-row"><div className="eyebrow">ACTIVE WORKSPACE</div><small>Connected to local sovereign loopback gateway</small></div>
+          {workspaces.map((w, i) => <motion.button className="recent-row" key={w.id} onClick={()=>selectWorkspace(w)} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:.08*i}}>
+            <span className="status-dot active"/><span><b>{w.name}</b><em>{w.tech.slice(0,3).join(' · ')}</em></span><small>{w.path}</small><ArrowRight size={14}/>
           </motion.button>)}
         </div>
       </section>
