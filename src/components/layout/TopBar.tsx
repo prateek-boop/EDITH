@@ -25,7 +25,7 @@ export function TopBar() {
     <div className="top-actions">
       <span className="demo-badge">
         {backendStatus?.connected
-          ? (backendStatus.mode === 'antigravity' ? 'Antigravity Intelligence' : backendStatus.mode === 'local-llm' ? 'Local Neural Engine' : 'Sovereign Core')
+          ? (backendStatus.mode === 'antigravity' ? 'Sovereign Neural Core' : backendStatus.mode === 'local-llm' ? 'Local Neural Engine' : 'Sovereign Core')
           : (workspace?.source === 'local' ? 'Local Workspace' : 'Sovereign Workspace')}
       </span>
       <motion.span className={`system-state ${ready?'ready':'busy'} state-${agentState}`} layout><i/>{ready?(agentState==='success'?'TASK COMPLETED':'ENGINE READY'):agentState.replace('_',' ').toUpperCase()}</motion.span>

@@ -299,7 +299,7 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
             name: 'EDITH Sovereign OS',
             path: '/home/lucifer/Projects/EDITH',
             progress: 100,
-            tech: ['React 19', 'TypeScript', 'Electron', 'Python', 'Google Antigravity'],
+            tech: ['React 19', 'TypeScript', 'Electron', 'Python', 'Sovereign Core'],
             source: 'local',
             gitDetected: true,
           },
@@ -506,7 +506,7 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
               set((s) => ({
                 agentState: 'executing',
                 plan: updatePlan(s.plan, 2, 1),
-                currentAction: s.currentAction || 'Running Antigravity reasoning and AST verification…',
+                currentAction: s.currentAction || 'Running sovereign reasoning and AST verification…',
               }))
             }
 

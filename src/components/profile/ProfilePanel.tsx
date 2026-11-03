@@ -30,7 +30,7 @@ export function ProfilePanel(){
       <span>Agent model routing</span>
       {backendStatus?.agyAvailable ? (
         <>
-          <b style={{ color: '#7bdcb0', display: 'block', margin: '4px 0' }}>Google Antigravity Engine Active</b>
+          <b style={{ color: '#7bdcb0', display: 'block', margin: '4px 0' }}>Sovereign Autonomous Engine Active</b>
           <select
             aria-label="Agent model routing"
             value={selectedModel}
@@ -44,7 +44,7 @@ export function ProfilePanel(){
             <option value="claude-opus-4-6-thinking">Claude Opus 4.6 (Deep Reasoning)</option>
             <option value="gpt-oss-120b-medium">GPT-OSS 120B (Medium)</option>
           </select>
-          <small>Directly orchestrated through Antigravity CLI v{backendStatus.agyVersion || '1.4'}.</small>
+          <small>Directly orchestrated through Sovereign Kernel v{backendStatus.agyVersion || '1.4'}.</small>
         </>
       ) : (
         <>
@@ -62,8 +62,8 @@ export function ProfilePanel(){
       <div className="service-row">
         <span className={backendStatus?.agyAvailable ? 'status-dot active' : 'status-dot'}/>
         <div>
-          <b>Google Antigravity Engine</b>
-          <small>{backendStatus?.agyAvailable ? `Connected · agy CLI v${backendStatus.agyVersion || '1.4'}` : 'Not detected in local environment'}</small>
+          <b>Sovereign Autonomous Engine</b>
+          <small>{backendStatus?.agyAvailable ? `Connected · Core Kernel v${backendStatus.agyVersion || '1.4'}` : 'Not detected in local environment'}</small>
         </div>
       </div>
       <div className="service-row">

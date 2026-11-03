@@ -67,7 +67,7 @@ export function AgentWorkspace(){
       </motion.div> : <motion.div key="work" className="execution-overlay" initial={{opacity:0,x:-18}} animate={{opacity:1,x:0}}>
         <p className="simulation-note" style={{ letterSpacing: '0.04em' }}>
           {backendStatus?.connected
-            ? `Sovereign Engine Active · Local Loopback · ${backendStatus.mode === 'antigravity' ? `Antigravity AI Engine Connected (${backendStatus.agyModel || 'gemini-3.8-flash-high'})` : backendStatus.mode === 'local-llm' ? 'Local LLM Connected' : 'Embedded Sovereign Engine'}`
+            ? `Sovereign Engine Active · Local Loopback · ${backendStatus.mode === 'antigravity' ? `Sovereign AI Engine Connected (${backendStatus.agyModel || 'gemini-3.8-flash-high'})` : backendStatus.mode === 'local-llm' ? 'Local LLM Connected' : 'Embedded Sovereign Engine'}`
             : 'Sovereign AI Engine · Connecting to local loopback gateway…'}
         </p>
         <div className="execution-head"><div><span className="eyebrow">ACTIVE GOAL</span><h1>{goal}</h1><div className={`execution-state state-${state}`}><i/>{state.replace('_',' ')}</div></div><button className="quiet-btn" onClick={reset}><RotateCcw size={14}/>Reset</button></div>
@@ -76,7 +76,7 @@ export function AgentWorkspace(){
         <details className="execution-stream-details" open={state === 'planning' || state === 'executing'}>
           <summary className="execution-summary">
             {state === 'success' || state === 'failed' ? <CheckCircle2 size={14} className="action-success"/> : <LoaderCircle size={14} className="spin action-running"/>}
-            <span>{state === 'success' ? 'Task completed' : state === 'failed' ? 'Execution stopped' : state === 'waiting_approval' ? 'Waiting for human approval' : (action || 'Processing with Antigravity engine…')} ({logs.length})</span>
+            <span>{state === 'success' ? 'Task completed' : state === 'failed' ? 'Execution stopped' : state === 'waiting_approval' ? 'Waiting for human approval' : (action || 'Processing with sovereign engine…')} ({logs.length})</span>
           </summary>
           <div className="execution-log-list">{logs.map((log)=><motion.div key={log.id} className={`execution-log ${log.status}`} initial={{opacity:0,x:-6}} animate={{opacity:1,x:0}}>
           <time>{log.time}</time><span className="log-node"/><div><strong>{log.label}</strong><p>{log.detail}</p>{log.file&&<code><FileCode2 size={11}/>{log.file}</code>}</div>

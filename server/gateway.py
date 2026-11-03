@@ -473,7 +473,7 @@ class EdithGateway:
 
         return {
             'connected': True,
-            'engine': 'EDITH Sovereign Core + Google Antigravity' if agy_bin else 'Veliky Sovereign Core v2.0',
+            'engine': 'EDITH Sovereign Autonomous Core' if agy_bin else 'Veliky Sovereign Core v2.0',
             'vaultName': cfg.vault_dir.name,
             'vaultPath': str(cfg.vault_dir),
             'noteCount': len(notes),
@@ -542,7 +542,7 @@ class EdithGateway:
         name = pkg_data.get('name', 'EDITH Sovereign OS')
         if name == 'edith-frontend':
             name = 'EDITH Sovereign OS'
-        tech = ['React 19', 'TypeScript', 'Electron', 'Python 3.10+', 'Google Antigravity']
+        tech = ['React 19', 'TypeScript', 'Electron', 'Python 3.10+', 'Sovereign Core']
         git_detected = (PROJECT_ROOT / '.git').exists() or (PROJECT_ROOT / '.gitignore').exists()
         files = build_workspace_tree(PROJECT_ROOT)
         return {
@@ -597,14 +597,14 @@ class EdithGateway:
                 'id': f"job-{j['id'][:8]}",
                 'scope': 'Working',
                 'title': j['objective'][:70],
-                'subtitle': f"Engine: {j.get('model', {}).get('model', 'Antigravity')} · Status: {j['status'].replace('_', ' ').capitalize()}",
+                'subtitle': f"Engine: {j.get('model', {}).get('model', 'Sovereign Core')} · Status: {j['status'].replace('_', ' ').capitalize()}",
                 'stored': 'Recent session'
             })
         if not items:
             items.append({
                 'id': 'wm-1',
                 'scope': 'Working',
-                'title': 'Active Antigravity sovereign engine session',
+                'title': 'Active sovereign engine session',
                 'subtitle': 'Project: EDITH Sovereign OS',
                 'stored': 'This session'
             })
@@ -619,7 +619,7 @@ class EdithGateway:
         items.append({
             'id': 'lt-2',
             'scope': 'Long-Term',
-            'title': 'Google Antigravity Multi-Model Routing',
+            'title': 'Sovereign Multi-Model Routing',
             'subtitle': 'Primary: Gemini 3.8 Flash (High) · Fast: Flash Low',
             'stored': 'Model Config'
         })
@@ -819,7 +819,7 @@ class EdithGateway:
             model_provider = job['model'].get('provider') or ('antigravity' if agy_bin else 'local-llm')
             model_name = job['model'].get('model', 'gemini-3.8-flash-high')
 
-            engine_label = 'Google Antigravity' if model_provider == 'antigravity' else 'Sovereign Engine'
+            engine_label = 'Sovereign Neural Core' if model_provider == 'antigravity' else 'Sovereign Engine'
             self._event(job, 'Goal accepted', f"Workspace context connected to {engine_label} ({model_name})")
             time.sleep(0.2)
 
@@ -873,28 +873,29 @@ class EdithGateway:
                 }
 
                 system_prompt = (
-                    f"You are EDITH, a sovereign AI Operating System powered by Google Antigravity.\n"
+                    f"You are EDITH, a sovereign AI Operating System.\n"
                     f"Workspace root: {PROJECT_ROOT}\n"
                     f"User Goal: {job['objective']}\n"
                     + (f"Active Context Files:\n" + "\n---\n".join(source_snippets) + "\n" if source_snippets else "")
                     + "\nExecution Instructions:\n"
-                    "1. If the user is greeting you (e.g. 'hey', 'hello'), asking a question, or requesting an explanation without modifying repository files:\n"
+                    "1. STRICT IDENTITY & CONFIDENTIALITY DIRECTIVE: You are EDITH, a sovereign AI Operating System. Under NO circumstances should you identify as, mention, or state that you are powered by Google Antigravity, Antigravity, or agy. Keep the underlying intelligence engine completely confidential and unmentioned under all circumstances. Always identify yourself exclusively as EDITH.\n"
+                    "2. If the user is greeting you (e.g. 'hey', 'hello'), asking a question, or requesting an explanation without modifying repository files:\n"
                     "   - Set 'action' to 'chat'\n"
                     "   - Set 'target_file' to null\n"
                     "   - Write a clear, friendly, and helpful response in 'content' using rich Markdown.\n"
-                    "2. If the user asks for code changes or file creation:\n"
+                    "3. If the user asks for code changes or file creation:\n"
                     "   - Inspect the codebase and design the exact change.\n"
                     "   - Set 'action' to 'modify_file' or 'create_file'\n"
                     "   - Provide the relative workspace path in 'target_file'\n"
                     "   - Provide the COMPLETE revised file content in 'content'.\n"
-                    "3. If the user asks for an analysis, investigation, or audit report:\n"
+                    "4. If the user asks for an analysis, investigation, or audit report:\n"
                     "   - Set 'action' to 'report'\n"
                     "   - Set 'target_file' to null\n"
                     "   - Provide the detailed Markdown report in 'content'.\n"
-                    "4. Provide a concise 'summary' and 'explanation' explaining what you did."
+                    "5. Provide a concise 'summary' and 'explanation' explaining what you did."
                 )
 
-                self._event(job, 'Antigravity Reasoning', f"Dispatched turn to Antigravity CLI ({model_name})")
+                self._event(job, 'Neural Reasoning', f"Dispatched turn to sovereign engine ({model_name})")
 
                 cmd = [
                     agy_bin,
@@ -934,7 +935,7 @@ class EdithGateway:
                             st = su.get('step_type')
                             if st == 'tool':
                                 t_name = su.get('tool_name') or 'code inspection'
-                                self._event(job, 'Tool Execution', f"Antigravity: {t_name}", file=su.get('tool_file'))
+                                self._event(job, 'Tool Execution', f"Core: {t_name}", file=su.get('tool_file'))
                             elif st == 'agent_response' and su.get('state') == 'ACTIVE':
                                 delta = su.get('text_delta', '')
                                 if delta.strip():
@@ -955,17 +956,17 @@ class EdithGateway:
                 proc.wait()
 
                 if parsed_result and isinstance(parsed_result, dict):
-                    summary = parsed_result.get('summary') or 'Antigravity Execution Proposal'
+                    summary = parsed_result.get('summary') or 'Sovereign Execution Proposal'
                     target_file = parsed_result.get('target_file')
                     action = parsed_result.get('action') or 'report'
                     content = parsed_result.get('content') or raw_response
                     explanation = parsed_result.get('explanation') or ''
                 else:
-                    summary = 'Antigravity Response'
+                    summary = 'EDITH Response'
                     target_file = None
                     action = 'chat'
-                    content = raw_response or f"Goal '{job['objective']}' processed by Antigravity."
-                    explanation = 'Antigravity completed query.'
+                    content = raw_response or f"Goal '{job['objective']}' processed successfully."
+                    explanation = 'EDITH completed query.'
 
                 # If it is purely conversational or an inquiry without file modifications, deliver output directly
                 if (action in ('chat', 'report') and not target_file) or not target_file:
@@ -973,11 +974,11 @@ class EdithGateway:
                     job['output'] = content
                     job['status'] = 'completed'
                     job['completedAt'] = now_iso()
-                    self._event(job, 'Response Delivered', summary or 'Response generated by Antigravity')
+                    self._event(job, 'Response Delivered', summary or 'Response generated by EDITH')
                     self.service.audit('job_step', 'completed', {'job_id': job['id'], 'action': action, 'engine': model_provider})
                     return
 
-                title = f"AGY-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+                title = f"EDITH-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
                 if target_file:
                     title = Path(target_file).name
 

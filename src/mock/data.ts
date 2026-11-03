@@ -7,7 +7,7 @@ export const workspaces: Workspace[] = [
     name: 'EDITH Sovereign OS',
     path: '/home/lucifer/Projects/EDITH',
     progress: 100,
-    tech: ['React 19', 'TypeScript', 'Electron', 'Python', 'Google Antigravity'],
+    tech: ['React 19', 'TypeScript', 'Electron', 'Python', 'Sovereign Core'],
     source: 'local',
     gitDetected: true,
   },
@@ -85,8 +85,8 @@ export const memories: MemoryItem[] = [
   {
     id: 'm2',
     scope: 'Long-Term',
-    title: 'Google Antigravity Intelligence',
-    subtitle: 'Autonomous reasoning, code mutation, and tool orchestration via agy CLI',
+    title: 'Sovereign Autonomous Intelligence',
+    subtitle: 'Autonomous reasoning, code mutation, and tool orchestration via sovereign kernel',
     stored: 'Model Routing',
   },
   {

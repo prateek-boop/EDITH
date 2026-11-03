@@ -50,19 +50,19 @@ flowchart TD
 ### Cognitive Execution Loop
 1. **SEE & UNDERSTAND**: Inspects repository layout, active workspace files, and indexed knowledge notes.
 2. **PLAN**: Decomposes the user's high-level goal into an execution sequence.
-3. **REASON**: Dispatches turns to Google Antigravity (`agy` CLI) or local OpenAI-compatible inference (Ollama `qwen2.5` / `deepseek-r1`) or the embedded sovereign engine with zero external telemetry.
+3. **REASON**: Dispatches turns to the sovereign agent engine or local OpenAI-compatible inference (Ollama `qwen2.5` / `deepseek-r1`) or the embedded sovereign engine with zero external telemetry.
 4. **ACT & PROPOSE**: Proposes workspace file mutations or reports with a cryptographic SHA-256 integrity hash.
 5. **HUMAN-IN-THE-LOOP APPROVAL**: The agent halts execution until the human signs the change.
 6. **VERIFY & AUDIT**: Validates results against evidence IDs and appends a tamper-evident hash-chained record to `audit.jsonl`.
 
 ---
 
-## Google Antigravity (`agy`) Integration
+## Sovereign Intelligence Engine Integration
 
-EDITH natively embeds the **Google Antigravity (`agy`)** CLI agent execution engine as its primary backend intelligence:
+EDITH natively embeds an advanced autonomous sovereign execution engine as its primary backend intelligence:
 
-- **Automatic CLI Discovery**: `server/gateway.py` automatically detects `agy` from PATH or `~/.local/bin/agy`.
-- **Stream-JSON Architecture**: Dispatches turns via `agy -p ... --output-format stream-json --json-schema ...`, capturing real-time agent tool invocations (`read_file`, `run_command`, AST lookups) and streaming them straight to EDITH's execution log.
+- **Automatic Kernel Discovery**: `server/gateway.py` automatically detects the execution binary in the environment.
+- **Stream-JSON Architecture**: Dispatches turns via structured schema streams, capturing real-time agent tool invocations (`read_file`, `run_command`, AST lookups) and streaming them straight to EDITH's execution log.
 - **Model Routing**: Supports selectable models including:
   - `gemini-3.8-flash-high` (Default - High Reasoning)
   - `gemini-3.8-flash-medium` (Balanced)
@@ -70,8 +70,8 @@ EDITH natively embeds the **Google Antigravity (`agy`)** CLI agent execution eng
   - `claude-sonnet-4-6` (Thinking)
   - `claude-opus-4-6-thinking` (Deep Reasoning)
   - `gpt-oss-120b-medium` (Medium)
-- **Sovereign Approval Gate**: Antigravity proposals adhere to the strict two-phase commit protocol:
-  1. `agy` formulates a structured mutation proposal containing target file, action (`create_file`, `modify_file`, `report`), content, and rationale.
+- **Sovereign Approval Gate**: Execution proposals adhere to the strict two-phase commit protocol:
+  1. The engine formulates a structured mutation proposal containing target file, action (`create_file`, `modify_file`, `report`), content, and rationale.
   2. The proposal is locked behind a cryptographic SHA-256 digest in EDITH's UI (`ApprovalCard`).
   3. On user approval, the loopback gateway commits the change directly to the local workspace with hash-chained provenance recorded in `audit.jsonl`.
 

@@ -18,7 +18,7 @@ export function ApprovalCard(){
       <span className="approval-icon"><AlertTriangle size={17}/></span>
       <div>
         <b id="approval-heading">SOVEREIGN APPROVAL REQUIRED</b>
-        <small>Antigravity generated a verified modification. Execution paused for human authorization.</small>
+        <small>Sovereign engine generated a verified modification. Execution paused for human authorization.</small>
       </div>
       <span className="action-tag" style={{ marginLeft: 'auto', background: 'rgba(255,107,91,0.15)', color: '#ff6b5b', border: '1px solid rgba(255,107,91,0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em' }}>
         {actionLabel}
