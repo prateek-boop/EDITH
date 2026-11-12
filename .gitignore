@@ -1,9 +1,33 @@
+# ==============================================================================
+# EDITH Project .gitignore
+# Frontend (React + Vite + TypeScript) + Electron + Python Backend + Playwright
+# ==============================================================================
+
+# Node dependencies & caches
 node_modules/
+.pnpm-store/
+.npm/
+.eslintcache
+
+# Production builds
 dist/
 dist-ssr/
-*.local
+dist-electron/
+build/
+out/
+release/
 .vite/
 
+# TypeScript build info / cache
+*.tsbuildinfo
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
 logs/
 *.log
 npm-debug.log*
@@ -12,28 +36,64 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-.DS_Store
-Thumbs.db
+# Test & Coverage reports
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.pytest_cache/
+.coverage
+htmlcov/
 
+# Python & Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.mypy_cache/
+.ruff_cache/
+
+# Server Runtime & Databases
+.runtime/
+server/.runtime/
+server/state/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-journal
+
+# Crawler & Browser Automation
+chrome-profile/
+chromium-profile/
+*.crdownload
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor & IDE files
 .idea/
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-test-results/
-playwright-report/
-
-# Python & Runtime
-.venv/
-__pycache__/
-*.py[cod]
-.runtime/
-server/.runtime/
-server/__pycache__/
-*.sqlite3
-*.db
-
+*~
+*.bak
