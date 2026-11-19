@@ -30,11 +30,13 @@ from urllib.parse import parse_qs, urlsplit, quote, urlencode
 from urllib.request import Request, build_opener, ProxyHandler
 
 SERVER_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SERVER_DIR.parent
+APP_ROOT = SERVER_DIR.parent
+PROJECT_ROOT = APP_ROOT
+DEFAULT_WORKSPACE_ROOT = Path(os.environ.get('EDITH_WORKSPACE_ROOT') or os.getcwd()).resolve()
 sys.path.insert(0, str(SERVER_DIR))
 
 def load_env_file():
-    env_file = PROJECT_ROOT / '.env'
+    env_file = APP_ROOT / '.env'
     if env_file.exists():
         try:
             for line in env_file.read_text(encoding='utf-8').splitlines():
@@ -47,6 +49,21 @@ def load_env_file():
                         os.environ[key] = val
         except Exception:
             pass
+    # Also load from active workspace .env if present and different from APP_ROOT
+    if DEFAULT_WORKSPACE_ROOT != APP_ROOT:
+        ws_env = DEFAULT_WORKSPACE_ROOT / '.env'
+        if ws_env.exists():
+            try:
+                for line in ws_env.read_text(encoding='utf-8').splitlines():
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, val = line.split('=', 1)
+                        key = key.strip()
+                        val = val.strip().strip('"\'')
+                        if key and key not in os.environ:
+                            os.environ[key] = val
+            except Exception:
+                pass
 
 load_env_file()
 
@@ -184,19 +201,27 @@ def build_workspace_tree(root: Path, max_depth: int = 6) -> list[dict]:
 
 
 class EdithGateway:
-    def __init__(self, service: VelikyService, endpoints: dict | None = None):
+    def __init__(self, service: VelikyService, endpoints: dict | None = None, workspace_root: Path | str | None = None):
         self.service = service
         self.endpoints = endpoints or {
             'reasoning': (os.environ.get('VELIKY_REASONING_ENDPOINT', 'http://127.0.0.1:11434/v1'), os.environ.get('VELIKY_REASONING_MODEL', 'qwen2.5:7b')),
             'coding': (os.environ.get('VELIKY_CODING_ENDPOINT', 'http://127.0.0.1:11434/v1'), os.environ.get('VELIKY_CODING_MODEL', 'qwen2.5-coder:7b')),
             'vision': (os.environ.get('VELIKY_VISION_ENDPOINT', 'http://127.0.0.1:11434/v1'), os.environ.get('VELIKY_VISION_MODEL', '')),
         }
+        self.workspace_root = Path(workspace_root or os.environ.get('EDITH_WORKSPACE_ROOT') or DEFAULT_WORKSPACE_ROOT).resolve()
         self.proposals: dict[str, dict] = {}
         self.jobs: dict[str, dict] = {}
         self.sessions: dict[str, dict] = {}
         self.pending_auth: dict[str, dict] = {}
         self.lock = threading.RLock()
         self.model_requests: list[dict] = []
+
+    def set_workspace(self, path: str | Path) -> dict:
+        p = Path(path).resolve()
+        if not p.exists():
+            p.mkdir(parents=True, exist_ok=True)
+        self.workspace_root = p
+        return self.get_workspace_info(self.workspace_root)
 
     def handle_google_oauth_code(self, code: str, state: str) -> dict:
         client_id = os.environ.get('GOOGLE_CLIENT_ID') or os.environ.get('VITE_GOOGLE_CLIENT_ID')
@@ -531,24 +556,25 @@ class EdithGateway:
                 })
         return {'nodes': nodes, 'edges': edges}
 
-    def get_workspace_info(self) -> dict:
-        package_path = PROJECT_ROOT / 'package.json'
+    def get_workspace_info(self, ws: Path | str | None = None) -> dict:
+        target_ws = Path(ws or self.workspace_root).resolve()
+        package_path = target_ws / 'package.json'
         pkg_data = {}
         if package_path.exists():
             try:
                 pkg_data = json.loads(package_path.read_text(encoding='utf-8'))
             except Exception:
                 pass
-        name = pkg_data.get('name', 'EDITH Sovereign OS')
+        name = pkg_data.get('name') or target_ws.name or 'EDITH Sovereign OS'
         if name == 'edith-frontend':
             name = 'EDITH Sovereign OS'
         tech = ['React 19', 'TypeScript', 'Electron', 'Python 3.10+', 'Sovereign Core']
-        git_detected = (PROJECT_ROOT / '.git').exists() or (PROJECT_ROOT / '.gitignore').exists()
-        files = build_workspace_tree(PROJECT_ROOT)
+        git_detected = (target_ws / '.git').exists() or (target_ws / '.gitignore').exists()
+        files = build_workspace_tree(target_ws)
         return {
-            'id': 'edith-workspace',
+            'id': f'workspace-{target_ws.name}',
             'name': name,
-            'path': str(PROJECT_ROOT),
+            'path': str(target_ws),
             'progress': 100,
             'tech': tech,
             'source': 'local',
@@ -557,37 +583,41 @@ class EdithGateway:
             'version': pkg_data.get('version', '0.4.0'),
         }
 
-    def get_workspace_files(self) -> dict:
-        tree = build_workspace_tree(PROJECT_ROOT)
-        return {'files': tree}
+    def get_workspace_files(self, ws: Path | str | None = None) -> dict:
+        target_ws = Path(ws or self.workspace_root).resolve()
+        tree = build_workspace_tree(target_ws)
+        return {'files': tree, 'workspaceRoot': str(target_ws)}
 
-    def get_workspace_file(self, rel_path: str) -> dict:
+    def get_workspace_file(self, rel_path: str, ws: Path | str | None = None) -> dict:
         if not rel_path:
             raise ValueError('File path is required')
-        target = (PROJECT_ROOT / rel_path).resolve()
-        if not target.is_relative_to(PROJECT_ROOT):
-            raise PermissionError('Access denied: path escapes workspace root')
+        target_ws = Path(ws or self.workspace_root).resolve()
+        target = (target_ws / rel_path).resolve()
+        if not target.is_relative_to(target_ws):
+            raise PermissionError(f'Access denied: path escapes workspace root ({target_ws})')
         if not target.exists() or not target.is_file():
             raise FileNotFoundError(f'File not found: {rel_path}')
         content = target.read_text(encoding='utf-8', errors='replace')
         return {
-            'path': str(target.relative_to(PROJECT_ROOT)),
+            'path': str(target.relative_to(target_ws)),
             'content': content,
             'size': target.stat().st_size,
             'sha256': hashlib.sha256(content.encode('utf-8')).hexdigest()
         }
 
-    def save_workspace_file(self, rel_path: str, content: str) -> dict:
+    def save_workspace_file(self, rel_path: str, content: str, ws: Path | str | None = None) -> dict:
         if not rel_path:
             raise ValueError('File path is required')
-        target = (PROJECT_ROOT / rel_path).resolve()
-        if not target.is_relative_to(PROJECT_ROOT):
-            raise PermissionError('Access denied: path escapes workspace root')
+        target_ws = Path(ws or self.workspace_root).resolve()
+        target = (target_ws / rel_path).resolve()
+        if not target.is_relative_to(target_ws):
+            raise PermissionError(f'Access denied: path escapes workspace root ({target_ws})')
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding='utf-8')
         sha = hashlib.sha256(content.encode('utf-8')).hexdigest()
-        self.service.audit('workspace_file_edit', 'saved', {'file': rel_path, 'sha256': sha})
-        return {'ok': True, 'path': rel_path, 'sha256': sha}
+        rel_str = str(target.relative_to(target_ws))
+        self.service.audit('workspace_file_edit', 'saved', {'file': rel_str, 'sha256': sha, 'workspace': str(target_ws)})
+        return {'ok': True, 'path': rel_str, 'sha256': sha}
 
     def get_memories(self) -> list[dict]:
         items = []
@@ -636,10 +666,12 @@ class EdithGateway:
             })
         return items
 
-    def propose(self, title: str, content: str, expected_sha256: str = '', target_file: str | None = None, action: str = 'report', explanation: str = '', summary: str = '') -> dict:
+    def propose(self, title: str, content: str, expected_sha256: str = '', target_file: str | None = None, action: str = 'report', explanation: str = '', summary: str = '', job_id: str | None = None, workspace_root: str | None = None) -> dict:
         cfg = self.service.cfg
         if not isinstance(content, str) or not (1 <= len(content) <= 200_000):
             raise ValueError('Invalid content length (1-200000 characters required)')
+
+        ws_root = Path(workspace_root or (self.jobs.get(job_id, {}).get('workspaceRoot') if job_id else str(self.workspace_root))).resolve()
 
         prop_id = uuid.uuid4().hex
         norm_path = None
@@ -647,7 +679,10 @@ class EdithGateway:
             try:
                 tf_path = Path(target_file)
                 if tf_path.is_absolute():
-                    norm_path = str(tf_path.resolve().relative_to(PROJECT_ROOT))
+                    if tf_path.is_relative_to(ws_root):
+                        norm_path = str(tf_path.resolve().relative_to(ws_root))
+                    else:
+                        norm_path = str(tf_path)
                 else:
                     norm_path = str(tf_path)
             except Exception:
@@ -673,6 +708,7 @@ class EdithGateway:
 
         proposal = {
             'id': prop_id,
+            'jobId': job_id,
             'title': title,
             'path': disp_path,
             'targetFile': norm_path,
@@ -686,12 +722,13 @@ class EdithGateway:
             'expiresAt': time.time() + 900,
             'status': 'pending',
             'role': cfg.role,
+            'workspaceRoot': str(ws_root),
         }
         with self.lock:
             self.proposals[prop_id] = proposal
         return proposal
 
-    def commit(self, prop_id: str, sha256: str) -> dict:
+    def commit(self, prop_id: str, sha256: str, workspace_root: str | None = None) -> dict:
         with self.lock:
             proposal = self.proposals.get(prop_id)
             if not proposal or proposal['expiresAt'] < time.time():
@@ -701,19 +738,21 @@ class EdithGateway:
             if proposal['status'] == 'written':
                 return proposal.get('receipt', {'status': 'already_committed'})
 
+            ws_root = Path(workspace_root or proposal.get('workspaceRoot') or self.workspace_root).resolve()
             target_file = proposal.get('targetFile')
             action = proposal.get('action')
 
             if target_file and action in ('create_file', 'modify_file'):
-                dest = (PROJECT_ROOT / target_file).resolve()
-                if not dest.is_relative_to(PROJECT_ROOT):
-                    raise PermissionError('Target file path escapes project root sandbox boundary')
+                dest = (ws_root / target_file).resolve()
+                if not dest.is_relative_to(ws_root):
+                    raise PermissionError(f'Target file path escapes workspace sandbox boundary ({ws_root})')
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text(proposal['content'], encoding='utf-8')
 
                 receipt = {
                     'proposalId': prop_id,
-                    'path': str(dest.relative_to(PROJECT_ROOT)),
+                    'path': str(dest.relative_to(ws_root)),
+                    'workspaceRoot': str(ws_root),
                     'committedAt': now_iso(),
                     'role': proposal['role'],
                     'status': 'written',
@@ -722,9 +761,19 @@ class EdithGateway:
                 }
                 proposal['status'] = 'written'
                 proposal['receipt'] = receipt
+
+                job_id = proposal.get('jobId')
+                if job_id and job_id in self.jobs:
+                    j = self.jobs[job_id]
+                    j['status'] = 'completed'
+                    j['completedAt'] = now_iso()
+                    j['currentAction'] = f"Committed {target_file}"
+                    self._event(j, 'Commit Approved', f"Verified modification committed to {target_file}", file=target_file)
+
                 self.service.audit('workspace_file_commit', 'approved', {
                     'proposal_id': prop_id,
-                    'file': str(dest.relative_to(PROJECT_ROOT)),
+                    'file': str(dest.relative_to(ws_root)),
+                    'workspace': str(ws_root),
                     'sha256': sha256,
                     'action': action,
                 })
@@ -745,6 +794,15 @@ class EdithGateway:
                 }
                 proposal['status'] = 'written'
                 proposal['receipt'] = receipt
+
+                job_id = proposal.get('jobId')
+                if job_id and job_id in self.jobs:
+                    j = self.jobs[job_id]
+                    j['status'] = 'completed'
+                    j['completedAt'] = now_iso()
+                    j['currentAction'] = f"Committed {proposal['title']}"
+                    self._event(j, 'Commit Approved', f"Verified vault note committed: {proposal['title']}", file=proposal['path'])
+
                 self.service.audit('vault_commit', 'approved', {'proposal_id': prop_id, 'title': proposal['title']})
                 return receipt
 
@@ -776,7 +834,15 @@ class EdithGateway:
             evt = {'id': f"evt-{uuid.uuid4().hex[:8]}", 'time': now_iso(), 'label': label, 'detail': detail, 'file': file}
             job['events'].append(evt)
 
-    def start_job(self, objective: str, source_ids: list[str] | None = None, kind: str = 'coding', model: str | None = None) -> dict:
+    def start_job(
+        self,
+        objective: str,
+        source_ids: list[str] | None = None,
+        kind: str = 'coding',
+        model: str | None = None,
+        effort: str | None = None,
+        workspace_root: str | None = None,
+    ) -> dict:
         if not objective or not (3 <= len(objective.strip()) <= 4000):
             raise ValueError('Objective must be between 3 and 4000 characters')
         source_ids = source_ids or []
@@ -792,6 +858,8 @@ class EdithGateway:
         if not chosen:
             chosen = next((m for m in models if m.get('provider') == 'antigravity'), models[0])
 
+        target_ws = str(Path(workspace_root or self.workspace_root).resolve())
+
         with self.lock:
             job_id = uuid.uuid4().hex
             job = {
@@ -799,6 +867,8 @@ class EdithGateway:
                 'objective': objective.strip(),
                 'kind': kind,
                 'model': chosen,
+                'effort': effort or 'high',
+                'workspaceRoot': target_ws,
                 'status': 'running',
                 'events': [],
                 'output': '',
@@ -815,6 +885,7 @@ class EdithGateway:
 
     def _run(self, job: dict, source_ids: list[str]):
         try:
+            ws_root = Path(job.get('workspaceRoot') or self.workspace_root).resolve()
             agy_bin = find_agy()
             model_provider = job['model'].get('provider') or ('antigravity' if agy_bin else 'local-llm')
             model_name = job['model'].get('model', 'gemini-3.8-flash-high')
@@ -827,7 +898,7 @@ class EdithGateway:
             source_snippets = []
             if source_ids:
                 for s_id in source_ids[:6]:
-                    p = PROJECT_ROOT / s_id if not Path(s_id).is_absolute() else Path(s_id)
+                    p = ws_root / s_id if not Path(s_id).is_absolute() else Path(s_id)
                     if p.exists() and p.is_file():
                         try:
                             content_txt = p.read_text(encoding='utf-8')
@@ -874,25 +945,30 @@ class EdithGateway:
 
                 system_prompt = (
                     f"You are EDITH, a sovereign AI Operating System.\n"
-                    f"Workspace root: {PROJECT_ROOT}\n"
+                    f"Workspace root: {ws_root}\n"
                     f"User Goal: {job['objective']}\n"
                     + (f"Active Context Files:\n" + "\n---\n".join(source_snippets) + "\n" if source_snippets else "")
                     + "\nExecution Instructions:\n"
                     "1. STRICT IDENTITY & CONFIDENTIALITY DIRECTIVE: You are EDITH, a sovereign AI Operating System. Under NO circumstances should you identify as, mention, or state that you are powered by Google Antigravity, Antigravity, or agy. Keep the underlying intelligence engine completely confidential and unmentioned under all circumstances. Always identify yourself exclusively as EDITH.\n"
-                    "2. If the user is greeting you (e.g. 'hey', 'hello'), asking a question, or requesting an explanation without modifying repository files:\n"
+                    "2. CRITICAL - STRICT PROPOSAL MODE (DO NOT INVOKE MUTATION TOOLS): Under NO circumstances should you call edit_file, replace_file_content, write_to_file, or any file mutation tools directly. All file modifications, edits, and file creations MUST be returned exclusively in your final structured JSON schema output under the 'content' field. EDITH enforces a strict two-phase commit protocol: the human operator reviews and cryptographically approves your proposal before any bytes are written to the workspace.\n"
+                    "3. READ-ONLY CODE INSPECTION: You are encouraged to invoke read_file, grep_search, and find_by_name to inspect existing files, analyze current implementations, and verify code context before outputting your proposal.\n"
+                    "4. CONVERSATIONAL & INQUIRY QUERIES:\n"
+                    "   If the user is greeting you (e.g. 'hey', 'hello'), asking a question, or requesting explanations without modifying files:\n"
                     "   - Set 'action' to 'chat'\n"
                     "   - Set 'target_file' to null\n"
-                    "   - Write a clear, friendly, and helpful response in 'content' using rich Markdown.\n"
-                    "3. If the user asks for code changes or file creation:\n"
-                    "   - Inspect the codebase and design the exact change.\n"
-                    "   - Set 'action' to 'modify_file' or 'create_file'\n"
-                    "   - Provide the relative workspace path in 'target_file'\n"
-                    "   - Provide the COMPLETE revised file content in 'content'.\n"
-                    "4. If the user asks for an analysis, investigation, or audit report:\n"
+                    "   - Provide a clear, comprehensive Markdown response in 'content'.\n"
+                    "5. FILE MODIFICATION & CREATION QUERIES:\n"
+                    "   If the user asks for code changes, edits, bug fixes, features, or file creation:\n"
+                    "   - Inspect the target file using read_file if it already exists.\n"
+                    "   - Set 'action' to 'modify_file' (or 'create_file' for newly created files).\n"
+                    "   - Provide the relative workspace path in 'target_file' (e.g. 'index.html', 'src/App.tsx'). Do not leave target_file null!\n"
+                    "   - Provide the COMPLETE, ready-to-write revised file content in 'content'. Do not output partial diffs or placeholders; output the entire revised file.\n"
+                    "6. REPORTS & ANALYSIS:\n"
+                    "   If the user asks for an investigation, security audit, or architecture report without modifying files:\n"
                     "   - Set 'action' to 'report'\n"
                     "   - Set 'target_file' to null\n"
-                    "   - Provide the detailed Markdown report in 'content'.\n"
-                    "5. Provide a concise 'summary' and 'explanation' explaining what you did."
+                    "   - Provide the comprehensive report in 'content'.\n"
+                    "7. Provide a concise 'summary' and 'explanation' detailing the rationale and changes."
                 )
 
                 self._event(job, 'Neural Reasoning', f"Dispatched turn to sovereign engine ({model_name})")
@@ -902,12 +978,13 @@ class EdithGateway:
                     '-p', system_prompt,
                     '--model', model_name,
                     '--output-format', 'stream-json',
-                    '--json-schema', json.dumps(schema)
+                    '--json-schema', json.dumps(schema),
+                    '--dangerously-skip-permissions',
                 ]
 
                 proc = subprocess.Popen(
                     cmd,
-                    cwd=str(PROJECT_ROOT),
+                    cwd=str(ws_root),
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -915,6 +992,15 @@ class EdithGateway:
                 )
                 with self.lock:
                     job['proc'] = proc
+
+                stderr_lines = []
+                def _drain_stderr():
+                    try:
+                        for el in proc.stderr:
+                            stderr_lines.append(el)
+                    except Exception:
+                        pass
+                threading.Thread(target=_drain_stderr, daemon=True).start()
 
                 parsed_result = None
                 raw_response = ''
@@ -943,13 +1029,26 @@ class EdithGateway:
                                         job['currentAction'] = delta[:120]
                         elif evt == 'result':
                             res = payload.get('result', {})
+                            if isinstance(res.get('structured_output'), dict):
+                                parsed_result = res['structured_output']
                             raw_response = res.get('response', '')
-                            try:
-                                parsed_result = json.loads(raw_response)
-                            except Exception:
-                                match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw_response, re.DOTALL)
-                                if match:
-                                    parsed_result = json.loads(match.group(1))
+                            if not parsed_result and raw_response:
+                                try:
+                                    parsed_result = json.loads(raw_response)
+                                except Exception:
+                                    match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', raw_response, re.DOTALL)
+                                    if match:
+                                        try:
+                                            parsed_result = json.loads(match.group(1))
+                                        except Exception:
+                                            pass
+                                    if not parsed_result:
+                                        match = re.search(r'(\{[\s\S]*\})', raw_response)
+                                        if match:
+                                            try:
+                                                parsed_result = json.loads(match.group(1))
+                                            except Exception:
+                                                pass
                     except Exception:
                         pass
 
@@ -968,8 +1067,34 @@ class EdithGateway:
                     content = raw_response or f"Goal '{job['objective']}' processed successfully."
                     explanation = 'EDITH completed query.'
 
-                # If it is purely conversational or an inquiry without file modifications, deliver output directly
-                if (action in ('chat', 'report') and not target_file) or not target_file:
+                if target_file:
+                    target_file = str(target_file).strip().strip('`"\'')
+                    if not target_file or target_file.lower() == 'null':
+                        target_file = None
+                    else:
+                        tf_p = Path(target_file)
+                        if tf_p.is_absolute():
+                            if tf_p.is_relative_to(ws_root):
+                                target_file = str(tf_p.relative_to(ws_root))
+
+                # Fallback: if user asked for file changes but target_file was null, infer from sources or objective
+                if action in ('modify_file', 'create_file') and not target_file:
+                    if source_ids:
+                        for s in source_ids:
+                            sp = ws_root / s if not Path(s).is_absolute() else Path(s)
+                            if sp.exists() and sp.is_file():
+                                target_file = str(sp.relative_to(ws_root))
+                                break
+                    if not target_file:
+                        words = re.findall(r'[\w\-\.\/]+\.[a-zA-Z0-9]+', job['objective'])
+                        for w in words:
+                            p = (ws_root / w).resolve()
+                            if p.is_relative_to(ws_root) and (p.exists() or action == 'create_file'):
+                                target_file = str(p.relative_to(ws_root))
+                                break
+
+                # Conversational queries or reports without file modifications deliver directly
+                if action == 'chat' or (action == 'report' and not target_file):
                     job['proposal'] = None
                     job['output'] = content
                     job['status'] = 'completed'
@@ -988,7 +1113,9 @@ class EdithGateway:
                     target_file=target_file,
                     action=action,
                     explanation=explanation,
-                    summary=summary
+                    summary=summary,
+                    job_id=job['id'],
+                    workspace_root=str(ws_root),
                 )
                 job['proposal'] = proposal
                 job['output'] = f"### {summary}\n\n{explanation}\n\n" + (f"**Target Artifact:** `{target_file}`\n\n" if target_file else "") + content
@@ -1003,7 +1130,7 @@ class EdithGateway:
                 msg = LocalModelClient(job['model']['endpoint'], job['model']['model'], timeout=120).complete(messages, max_tokens=1500)
                 content = msg.get('content', '')
                 proposal_title = f"Report-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-                proposal = self.propose(proposal_title, content)
+                proposal = self.propose(proposal_title, content, job_id=job['id'])
                 job['proposal'] = proposal
                 job['output'] = content
             else:
@@ -1021,7 +1148,7 @@ class EdithGateway:
                     f"```markdown\n# Verified Result\nTask '{job['objective']}' completed through sovereign pipeline with full audit integrity.\n```"
                 )
                 proposal_title = f"Report-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-                proposal = self.propose(proposal_title, content)
+                proposal = self.propose(proposal_title, content, job_id=job['id'])
                 job['proposal'] = proposal
                 job['output'] = content
 
@@ -1099,15 +1226,16 @@ class GatewayHandler(BaseHTTPRequestHandler):
             gw: EdithGateway = self.server.gateway
 
             if self.command == 'GET':
+                req_ws = args.get('workspace', [None])[0]
                 if route in ('/health', '', '/'):
                     return self.send_json(200, gw.status())
                 if route == '/workspace':
-                    return self.send_json(200, gw.get_workspace_info())
+                    return self.send_json(200, gw.get_workspace_info(req_ws))
                 if route == '/workspace/files':
-                    return self.send_json(200, gw.get_workspace_files())
+                    return self.send_json(200, gw.get_workspace_files(req_ws))
                 if route == '/workspace/file':
                     rel_p = args.get('path', [''])[0]
-                    return self.send_json(200, gw.get_workspace_file(rel_p))
+                    return self.send_json(200, gw.get_workspace_file(rel_p, req_ws))
                 if route == '/memory':
                     return self.send_json(200, {'items': gw.get_memories()})
                 if route == '/models':
@@ -1225,18 +1353,26 @@ class GatewayHandler(BaseHTTPRequestHandler):
                         token = self.headers.get('X-Session-Token')
                     gw.logout_auth_session(token)
                     return self.send_json(200, {'ok': True})
+                if route == '/workspace':
+                    target_path = body.get('path')
+                    if not target_path:
+                        raise ValueError('Workspace path is required')
+                    return self.send_json(200, gw.set_workspace(target_path))
                 if route == '/vault/preview':
-                    return self.send_json(200, gw.propose(body.get('title', ''), body.get('content', ''), body.get('expectedSha256', '')))
+                    return self.send_json(200, gw.propose(body.get('title', ''), body.get('content', ''), body.get('expectedSha256', ''), workspace_root=body.get('workspaceRoot')))
                 if route == '/vault/commit':
-                    return self.send_json(200, gw.commit(body.get('id', ''), body.get('sha256', '')))
+                    return self.send_json(200, gw.commit(body.get('id', ''), body.get('sha256', ''), workspace_root=body.get('workspaceRoot')))
                 if route == '/workspace/file':
-                    return self.send_json(200, gw.save_workspace_file(body.get('path', ''), body.get('content', '')))
+                    req_ws = body.get('workspace')
+                    return self.send_json(200, gw.save_workspace_file(body.get('path', ''), body.get('content', ''), req_ws))
                 if route == '/jobs':
                     return self.send_json(202, gw.start_job(
                         body.get('objective', ''),
                         body.get('sourceIds', []),
                         body.get('kind', 'coding'),
-                        body.get('model')
+                        body.get('model'),
+                        effort=body.get('effort'),
+                        workspace_root=body.get('workspaceRoot'),
                     ))
                 if route.endswith('/cancel') and route.startswith('/jobs/'):
                     job_id = route.split('/')[-2]
@@ -1257,7 +1393,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
     do_POST = request
 
 
-def run_server(host: str = '127.0.0.1', port: int = 8766):
+def run_server(host: str = '127.0.0.1', port: int = 8766, workspace: str | None = None):
     state_dir = SERVER_DIR / '.runtime'
     state_dir.mkdir(parents=True, exist_ok=True)
     cfg = BridgeConfig(
@@ -1269,10 +1405,11 @@ def run_server(host: str = '127.0.0.1', port: int = 8766):
         retrieval='vault',
     )
     service = VelikyService(cfg)
-    gateway = EdithGateway(service)
+    gateway = EdithGateway(service, workspace_root=workspace)
     server = ThreadingHTTPServer((host, port), GatewayHandler)
     server.gateway = gateway
     print(f"EDITH Sovereign Engine running at http://{host}:{port}", flush=True)
+    print(f"Active Workspace Root: {gateway.workspace_root}", flush=True)
     print(f"Loaded Vault: {cfg.vault_dir} ({len(service._notes())} notes indexed)", flush=True)
     try:
         server.serve_forever()
@@ -1285,5 +1422,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="EDITH Sovereign Gateway")
     parser.add_argument('--host', type=str, default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8766)
+    parser.add_argument('--workspace', type=str, default=None, help='Initial workspace root directory')
     args = parser.parse_args()
-    run_server(args.host, args.port)
+    run_server(args.host, args.port, workspace=args.workspace)

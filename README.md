@@ -84,19 +84,72 @@ EDITH natively embeds an advanced autonomous sovereign execution engine as its p
 - Python 3.10+
 - (Optional) Local Ollama or vLLM running on `http://127.0.0.1:11434` or `http://127.0.0.1:8000`
 
-### 2. Run the Electron Desktop App
+### 2. EDITH Sovereign CLI (Terminal Interface)
+
+Just like `claude code` or the `agy` CLI, EDITH provides a feature-rich, sovereign terminal interface (`edith`) with interactive model switching, execution modes, file context mentions, reasoning effort controls, local shell escape, doctor diagnostics, color diff previews, and the signature Two-Phase Sovereign Approval Gate:
+
+```bash
+# Launch interactive Sovereign REPL session
+edith
+
+# Or via npm:
+npm run cli
+
+# Execute a single goal directly from the command line:
+edith "Explain the architecture of this repository"
+
+# Run with a specific intelligence model:
+edith -m claude-sonnet-4-6 "Audit capabilities in server/capabilities.yaml"
+
+# Architectural Plan-Only mode (read-only, no file modifications proposed):
+edith --mode plan "Design a database migration strategy"
+
+# Deep reasoning effort depth (low | medium | high | max):
+edith --effort max "Optimize graph traversal in server/veliky_service.py"
+
+# Auto-approve file modifications (skip interactive prompt):
+edith -y "Create scripts/demo.py with a verification function"
+
+# Mention files to attach them directly to agent context (@file):
+edith "Review @server/gateway.py and check edge cases in @server/policy_engine.py"
+
+# Subcommands & Diagnostics:
+edith doctor              # System diagnostics & cryptographic audit chain verification
+edith status              # Sovereign OS health, models & workspace status
+edith models              # List available AI models and their roles
+edith audit [limit]       # Inspect tamper-evident hash-chained audit log
+edith notes [query]       # Search the Sovereign Knowledge Vault
+edith files [query]       # Browse workspace file tree
+edith graph               # View knowledge graph topology & backlinks
+edith gateway [cmd]       # Background gateway supervision (start/stop/restart/status)
+```
+
+Inside the interactive REPL:
+- **Interactive Model Switcher (`/model`)**: Type `/model` to open an interactive numbered picker (1–6) or type `/model claude-sonnet-4-6` to switch instantly. Persists your choice across sessions in `~/.config/edith/settings.json`.
+- **Execution Modes (`/mode [coding|plan|auto]`)**: Switch between `coding` (standard with Two-Phase Approval Gate), `plan` (architectural analysis only), and `auto` (auto-approve changes).
+- **Reasoning Effort (`/effort [low|medium|high|max]`)**: Dynamically adjust neural reasoning depth and thinking tokens.
+- **File Mentions (`@filename`)**: Mention any workspace file (e.g., `@src/App.tsx`) to automatically attach its content to the agent context. Full Tab completion included.
+- **Local Shell Escape (`!<command>`)**: Run any terminal command directly without leaving EDITH (e.g., `!git status`, `!git diff`, `!npm test`).
+- **Revert / Undo (`/undo`)**: Safely restore any approved file modification back to its pre-commit state with a single command.
+- **Cryptographic Doctor (`/doctor`)**: Runs end-to-end diagnostics and validates the SHA-256 hash-chain integrity of all audit records.
+- **Export Transcript (`/export [path]`)**: Save your full conversation, reasoning steps, tool calls, and diffs to a structured Markdown document.
+- **Two-Phase Approval Gate**: Whenever EDITH proposes creating or modifying a file, it displays the cryptographic SHA-256 card, target file, and color unified diff (`+` green, `-` red), prompting operator confirmation (`[y]es / [n]o / [d]iff / [e]xplanation`) before committing any bytes to disk.
+
+---
+
+### 3. Run the Electron Desktop App
 ```bash
 # Launch Vite dev server + Sovereign Engine + Electron together
 npm run electron:dev
 ```
 
-### 3. Run in Production Desktop Mode
+### 4. Run in Production Desktop Mode
 ```bash
 # Build production bundle and launch Electron desktop app
 npm run electron:preview
 ```
 
-### 4. Run Web Mode (Browser-only)
+### 5. Run Web Mode (Browser-only)
 ```bash
 # Terminal 1: Start the Python Sovereign Engine
 python3 server/gateway.py --port 8766

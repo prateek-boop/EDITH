@@ -583,6 +583,14 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
     if (activeProposal) {
       try {
         await edithApi.commitProposal(activeProposal.id, activeProposal.sha256)
+        if (activeProposal.targetFile) {
+          void get().fetchWorkspaceFiles()
+          if (get().selectedFile?.path === activeProposal.targetFile) {
+            void get().openFileByPath(activeProposal.targetFile)
+          }
+        }
+        void get().fetchAuditTrail()
+        void get().fetchVaultNotes()
       } catch (err) {
         console.warn('Commit warning:', err)
       }

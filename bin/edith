@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# EDITH — Sovereign Personal AI Operating System CLI
+# ==============================================================================
+
+set -e
+
+# Resolve the absolute path of this script (following symlinks if needed)
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+PROJECT_ROOT="$(cd -P "$BIN_DIR/.." >/dev/null 2>&1 && pwd)"
+
+# Identify Python interpreter
+PYTHON_BIN="$PROJECT_ROOT/.venv/bin/python"
+if [ ! -x "$PYTHON_BIN" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python3)"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_BIN="$(command -v python)"
+    else
+        echo "Error: Python 3 not found. Please install Python 3.10+." >&2
+        exit 1
+    fi
+fi
+
+export EDITH_APP_ROOT="$PROJECT_ROOT"
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+export EDITH_WORKSPACE_ROOT="${EDITH_WORKSPACE_ROOT:-$PWD}"
+
+# Execute EDITH CLI with all forwarded arguments
+exec "$PYTHON_BIN" "$PROJECT_ROOT/bin/edith.py" "$@"
