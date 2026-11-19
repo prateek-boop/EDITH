@@ -64,12 +64,12 @@ EDITH natively embeds an advanced autonomous sovereign execution engine as its p
 - **Automatic Kernel Discovery**: `server/gateway.py` automatically detects the execution binary in the environment.
 - **Stream-JSON Architecture**: Dispatches turns via structured schema streams, capturing real-time agent tool invocations (`read_file`, `run_command`, AST lookups) and streaming them straight to EDITH's execution log.
 - **Model Routing**: Supports selectable models including:
-  - `gemini-3.8-flash-high` (Default - High Reasoning)
-  - `gemini-3.8-flash-medium` (Balanced)
-  - `gemini-3.8-flash-low` (Fast)
-  - `claude-sonnet-4-6` (Thinking)
-  - `claude-opus-4-6-thinking` (Deep Reasoning)
-  - `gpt-oss-120b-medium` (Medium)
+  - `llama-3.2-3b-instruct` (Default - Local 3.2B High Reasoning)
+  - `qwen2.5-coder-3b-instruct` (Local 3B Coding Specialist)
+  - `phi-3.5-mini-instruct` (Local 3.8B Fast Edge)
+  - `llama-3.3-70b-instruct` (Thinking / Deep Reasoning)
+  - `qwen2.5-72b-instruct` (Deep Reasoning)
+  - `deepseek-r1-distill-llama-8b` (Coding)
 - **Sovereign Approval Gate**: Execution proposals adhere to the strict two-phase commit protocol:
   1. The engine formulates a structured mutation proposal containing target file, action (`create_file`, `modify_file`, `report`), content, and rationale.
   2. The proposal is locked behind a cryptographic SHA-256 digest in EDITH's UI (`ApprovalCard`).
@@ -114,9 +114,15 @@ edith -y "Create scripts/demo.py with a verification function"
 edith "Review @server/gateway.py and check edge cases in @server/policy_engine.py"
 
 # Subcommands & Diagnostics:
+edith login [--demo|--browser] # Sign in with Google (Desktop OAuth or Instant Demo)
+edith auth [status|login|logout] # Manage Google OAuth 2.0 session
+edith whoami              # Display active Google identity & session
+edith logout              # Sign out and clear Google credentials
+edith local [scan|endpoint] # Switch to local LLMs (Ollama/LM Studio) if available
+edith --local "Goal"      # Route execution to local LLM on loopback
 edith doctor              # System diagnostics & cryptographic audit chain verification
 edith status              # Sovereign OS health, models & workspace status
-edith models              # List available AI models and their roles
+edith models              # List available AI models (Cloud & Local LLMs)
 edith audit [limit]       # Inspect tamper-evident hash-chained audit log
 edith notes [query]       # Search the Sovereign Knowledge Vault
 edith files [query]       # Browse workspace file tree
@@ -125,7 +131,9 @@ edith gateway [cmd]       # Background gateway supervision (start/stop/restart/s
 ```
 
 Inside the interactive REPL:
-- **Interactive Model Switcher (`/model`)**: Type `/model` to open an interactive numbered picker (1–6) or type `/model claude-sonnet-4-6` to switch instantly. Persists your choice across sessions in `~/.config/edith/settings.json`.
+- **Google Authentication (`/login`, `/auth`, `/whoami`, `/logout`)**: Sign in via system browser (Google OAuth 2.0 Web Flow), instant local developer demo profile (`/login --demo`), or manual Google ID Token. Authenticated identity persists in `~/.config/edith/settings.json` and attaches session tokens across all CLI requests.
+- **Local Models & Air-Gapped Switching (`/local`, `/model local`, `edith --local`)**: Automatically probes loopback endpoints (Ollama `11434`, LM Studio `1234`, vLLM `8000`). Switch seamlessly between cloud models and connected local LLMs with `/local <model>`, probe servers with `/local scan`, or set custom endpoints with `/local endpoint <url>`.
+- **Interactive Model Switcher (`/model`)**: Type `/model` to open an interactive numbered picker showing both Cloud Sovereign models and connected Local LLMs, or type `/model qwen2.5:7b` to switch instantly. Persists your choice across sessions in `~/.config/edith/settings.json`.
 - **Execution Modes (`/mode [coding|plan|auto]`)**: Switch between `coding` (standard with Two-Phase Approval Gate), `plan` (architectural analysis only), and `auto` (auto-approve changes).
 - **Reasoning Effort (`/effort [low|medium|high|max]`)**: Dynamically adjust neural reasoning depth and thinking tokens.
 - **File Mentions (`@filename`)**: Mention any workspace file (e.g., `@src/App.tsx`) to automatically attach its content to the agent context. Full Tab completion included.

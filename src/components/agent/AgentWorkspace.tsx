@@ -67,7 +67,7 @@ export function AgentWorkspace(){
       </motion.div> : <motion.div key="work" className="execution-overlay" initial={{opacity:0,x:-18}} animate={{opacity:1,x:0}}>
         <p className="simulation-note" style={{ letterSpacing: '0.04em' }}>
           {backendStatus?.connected
-            ? `Sovereign Engine Active · Local Loopback · ${backendStatus.mode === 'antigravity' ? `Sovereign AI Engine Connected (${backendStatus.agyModel || 'gemini-3.8-flash-high'})` : backendStatus.mode === 'local-llm' ? 'Local LLM Connected' : 'Embedded Sovereign Engine'}`
+            ? `Sovereign Engine Active · Local Loopback · ${backendStatus.mode === 'sovereign-core' ? `Sovereign AI Engine Connected (${backendStatus.sovereignModel || backendStatus.agyModel || 'llama-3.2-3b-instruct'})` : backendStatus.mode === 'local-llm' ? 'Local LLM Connected' : 'Embedded Sovereign Engine'}`
             : 'Sovereign AI Engine · Connecting to local loopback gateway…'}
         </p>
         <div className="execution-head"><div><span className="eyebrow">ACTIVE GOAL</span><h1>{goal}</h1><div className={`execution-state state-${state}`}><i/>{state.replace('_',' ')}</div></div><button className="quiet-btn" onClick={reset}><RotateCcw size={14}/>Reset</button></div>

@@ -112,7 +112,10 @@ export interface BackendStatus {
   noteCount: number
   role: string
   canWrite: boolean
-  mode: 'local-llm' | 'embedded-sovereign' | 'antigravity'
+  mode: 'local-llm' | 'embedded-sovereign' | 'sovereign-core'
+  sovereignAvailable?: boolean
+  sovereignVersion?: string
+  sovereignModel?: string
   agyAvailable?: boolean
   agyVersion?: string
   agyModel?: string

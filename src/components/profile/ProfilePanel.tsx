@@ -28,7 +28,7 @@ export function ProfilePanel(){
     {section==='Appearance'&&<><div className="setting-block"><span>Theme</span><b><Moon size={13}/>EDITH Dark</b><small>Graphite surfaces with a restrained coral accent.</small></div><div className="setting-note"><Gauge size={13}/>Desktop density · {compact?'Compact':'Comfortable'}</div></>}
     {section==='Models'&&<div className="setting-block">
       <span>Agent model routing</span>
-      {backendStatus?.agyAvailable ? (
+      {(backendStatus?.sovereignAvailable ?? backendStatus?.agyAvailable) ? (
         <>
           <b style={{ color: '#7bdcb0', display: 'block', margin: '4px 0' }}>Sovereign Autonomous Engine Active</b>
           <select
@@ -37,14 +37,14 @@ export function ProfilePanel(){
             onChange={(e) => setSelectedModel(e.target.value)}
             style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', background: '#101114', color: '#f1f3f5', border: '1px solid #2b3038' }}
           >
-            <option value="gemini-3.8-flash-high">Gemini 3.8 Flash (High Reasoning - Default)</option>
-            <option value="gemini-3.8-flash-medium">Gemini 3.8 Flash (Medium)</option>
-            <option value="gemini-3.8-flash-low">Gemini 3.8 Flash (Low / Fast)</option>
-            <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Thinking)</option>
-            <option value="claude-opus-4-6-thinking">Claude Opus 4.6 (Deep Reasoning)</option>
-            <option value="gpt-oss-120b-medium">GPT-OSS 120B (Medium)</option>
+            <option value="llama-3.2-3b-instruct">Llama 3.2 3B Instruct (Default - Local Core)</option>
+            <option value="qwen2.5-coder-3b-instruct">Qwen 2.5 Coder 3B (Coding Specialist)</option>
+            <option value="phi-3.5-mini-instruct">Phi 3.5 Mini 3.8B (Fast / Low Latency)</option>
+            <option value="llama-3.3-70b-instruct">Llama 3.3 70B Instruct (Thinking / Deep Reasoning)</option>
+            <option value="qwen2.5-72b-instruct">Qwen 2.5 72B Instruct (Deep Reasoning)</option>
+            <option value="deepseek-r1-distill-llama-8b">DeepSeek R1 Distill 8B (Coding)</option>
           </select>
-          <small>Directly orchestrated through Sovereign Kernel v{backendStatus.agyVersion || '1.4'}.</small>
+          <small>Directly orchestrated through Sovereign Kernel v{backendStatus.sovereignVersion || backendStatus.agyVersion || '1.0.0'}.</small>
         </>
       ) : (
         <>
@@ -60,10 +60,10 @@ export function ProfilePanel(){
     </div>}
     {section==='Connected Services'&&<>
       <div className="service-row">
-        <span className={backendStatus?.agyAvailable ? 'status-dot active' : 'status-dot'}/>
+        <span className={(backendStatus?.sovereignAvailable ?? backendStatus?.agyAvailable) ? 'status-dot active' : 'status-dot'}/>
         <div>
           <b>Sovereign Autonomous Engine</b>
-          <small>{backendStatus?.agyAvailable ? `Connected · Core Kernel v${backendStatus.agyVersion || '1.4'}` : 'Not detected in local environment'}</small>
+          <small>{(backendStatus?.sovereignAvailable ?? backendStatus?.agyAvailable) ? `Connected · Core Kernel v${backendStatus.sovereignVersion || backendStatus.agyVersion || '1.0.0'}` : 'Not detected in local environment'}</small>
         </div>
       </div>
       <div className="service-row">

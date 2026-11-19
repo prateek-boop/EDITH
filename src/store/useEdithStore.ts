@@ -135,7 +135,7 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
   currentGoal: '', currentAction: '', plan: initialPlan, selectedFile: null, selectedActivityId: null,
   files: fileTree, memory: memories, activity, graphNodes: fallbackGraph.nodes, graphEdges: fallbackGraph.edges,
   activeFiles: [], executionLog: [], agentOutput: '', commandHistory: [], profileOpen: false, historyOpen: false, projectSwitcherOpen: false, isIndexingWorkspace: false,
-  backendStatus: null, activeProposal: null, activeJobId: null, selectedModel: 'gemini-3.8-flash-high',
+  backendStatus: null, activeProposal: null, activeJobId: null, selectedModel: 'llama-3.2-3b-instruct',
   editorContent: '', editorDirty: false, editorSaveTimer: null,
   wikilinkNodes: initialWikilink.nodes, wikilinkEdges: initialWikilink.edges,
   graphSettings: {
@@ -265,7 +265,7 @@ export const useEdithStore = create<EdithStore>((set, get) => ({
       if (status) {
         set({
           backendStatus: status,
-          ...(status.agyModel ? { selectedModel: status.agyModel } : {}),
+          ...((status.sovereignModel || status.agyModel) ? { selectedModel: status.sovereignModel || status.agyModel } : {}),
         })
         void get().fetchWorkspaceFiles()
         void get().fetchAuditTrail()

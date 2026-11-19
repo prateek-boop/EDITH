@@ -91,7 +91,16 @@ def divider(char: str = "─", color: str = Colors.MUTED, label: Optional[str] =
     return f"{c(left, color)}{c(padded, Colors.BOLD + Colors.PRIMARY)}{c(right, color)}"
 
 
-def get_banner(version: str = "1.0.0", model: str = "gemini-3.8-flash-high", status: str = "ONLINE", mode: str = "coding", effort: str = "high", workspace: Optional[str] = None) -> str:
+def get_banner(
+    version: str = "1.0.0",
+    model: str = "llama-3.2-3b-instruct",
+    status: str = "ONLINE",
+    mode: str = "coding",
+    effort: str = "high",
+    workspace: Optional[str] = None,
+    auth_user: Optional[dict] = None,
+    is_local_model: bool = False,
+) -> str:
     """Generate the signature EDITH ASCII banner."""
     ascii_rows = [
         r"  ███████╗ ██████╗  ██╗ ████████╗ ██╗  ██╗",
@@ -107,17 +116,29 @@ def get_banner(version: str = "1.0.0", model: str = "gemini-3.8-flash-high", sta
 
     mode_display = c(mode.upper(), Colors.BOLD + (Colors.WARNING if mode == "auto" else (Colors.SECONDARY if mode == "plan" else Colors.SUCCESS)))
 
+    if auth_user and auth_user.get("email"):
+        u_name = auth_user.get("name", "Developer")
+        u_email = auth_user.get("email", "")
+        if "google" in u_name.lower():
+            u_name = "Sovereign Developer"
+        identity_str = c(f"{u_name} ({u_email})", Colors.BOLD + Colors.SUCCESS)
+    else:
+        identity_str = c("Guest / Unauthenticated (Type /login to sign in)", Colors.MUTED)
+
+    engine_tag = c("[Local LLM]", Colors.BOLD + Colors.WARNING) if is_local_model else c("[Sovereign Core]", Colors.DIM)
+
     banner_lines = [
         line_border,
         *[c(row, Colors.BOLD + Colors.PRIMARY) for row in ascii_rows],
         c("        S O V E R E I G N   A I   O P E R A T I N G   S Y S T E M", Colors.BOLD + Colors.SECONDARY),
         line_border,
         f" {c('Core Version:', Colors.MUTED)} {c(f'v{version}', Colors.BOLD + Colors.WHITE)}  "
-        f"{c('• Model:', Colors.MUTED)} {c(model, Colors.BOLD + Colors.PRIMARY)}  "
+        f"{c('• Model:', Colors.MUTED)} {c(model, Colors.BOLD + Colors.PRIMARY)} {engine_tag}  "
         f"{c('• Mode:', Colors.MUTED)} {mode_display}  "
         f"{c('• Effort:', Colors.MUTED)} {c(effort, Colors.BOLD + Colors.WHITE)}",
         f" {c('Status:', Colors.MUTED)} {c(status, Colors.BOLD + Colors.SUCCESS)}  "
         f"{c('• Telemetry:', Colors.MUTED)} {c('Zero / Air-Gapped Loopback', Colors.MUTED)}",
+        f" {c('Identity:', Colors.MUTED)} {identity_str}",
     ]
     if workspace:
         banner_lines.append(f" {c('Workspace:', Colors.MUTED)} {c(workspace, Colors.BOLD + Colors.WHITE)}")
@@ -147,15 +168,44 @@ def render_model_menu(models: list[dict], active_model: str) -> list[str]:
     ordered_ids: list[str] = []
     seen = set()
 
-    idx = 1
+    # Collect sovereign / cloud models
+    cloud_models = []
+    local_models = []
+
     for m in models:
+        provider = m.get("provider", "sovereign-core")
+        # Check modelDetails
         for d in m.get("modelDetails", []):
             mid = d.get("id")
             if not mid or mid in seen:
                 continue
             seen.add(mid)
-            ordered_ids.append(mid)
+            if provider == "local-llm" or d.get("local"):
+                local_models.append(d)
+            else:
+                cloud_models.append(d)
 
+        # Also check availableModels for local-llm if not in modelDetails
+        if provider == "local-llm":
+            for mid in m.get("availableModels", []):
+                if mid and mid not in seen:
+                    seen.add(mid)
+                    local_models.append({
+                        "id": mid,
+                        "name": f"{mid} (Local LLM)",
+                        "role": m.get("role", "coding"),
+                        "provider": "local-llm",
+                        "endpoint": m.get("endpoint", ""),
+                        "local": True,
+                    })
+
+    idx = 1
+
+    if cloud_models:
+        print(f"  {c('─── Sovereign Local & Neural Models ───', Colors.BOLD + Colors.PRIMARY)}")
+        for d in cloud_models:
+            mid = d.get("id", "")
+            ordered_ids.append(mid)
             is_active = (mid == active_model)
             marker = c("●", Colors.SUCCESS) if is_active else " "
             name = d.get("name") or mid
@@ -167,9 +217,84 @@ def render_model_menu(models: list[dict], active_model: str) -> list[str]:
 
             print(f"  {num_str} {marker} {c(mid.ljust(26), Colors.BOLD + Colors.WHITE)} {c(role_badge.ljust(12), Colors.MUTED)} {c(name, Colors.DIM)} {active_label}")
             idx += 1
+        print()
 
-    print()
+    if local_models:
+        print(f"  {c('─── Local LLM Models (Loopback / Air-Gapped) ───', Colors.BOLD + Colors.WARNING)}")
+        for d in local_models:
+            mid = d.get("id", "")
+            ordered_ids.append(mid)
+            is_active = (mid == active_model)
+            marker = c("●", Colors.SUCCESS) if is_active else " "
+            name = d.get("name") or f"{mid} (Local)"
+            ep = d.get("endpoint", "127.0.0.1:11434")
+            role_badge = "[local-llm]"
+
+            num_str = c(f"[{idx}]", Colors.BOLD + Colors.WARNING if not is_active else Colors.BOLD + Colors.SUCCESS)
+            active_label = c("(Active Local Model)", Colors.BOLD + Colors.SUCCESS) if is_active else ""
+
+            print(f"  {num_str} {marker} {c(mid.ljust(26), Colors.BOLD + Colors.WHITE)} {c(role_badge.ljust(12), Colors.WARNING)} {c(ep, Colors.DIM)} {active_label}")
+            idx += 1
+        print()
+    else:
+        print(f"  {c('─── Local LLM Models ───', Colors.MUTED)}")
+        print(f"  {c('○ No local model servers connected.', Colors.MUTED)} {c('Start Ollama or run /local to scan loopback endpoints.', Colors.DIM)}\n")
+
     return ordered_ids
+
+
+def render_auth_card(user: dict, session_token: Optional[str] = None) -> None:
+    """Render Google Identity authentication status card."""
+    print("\n" + divider(label="GOOGLE IDENTITY AUTHENTICATION") + "\n")
+    name = user.get("name") or "Google User"
+    email = user.get("email") or "developer@edith.dev"
+    sub = user.get("sub", "")
+    verified = user.get("verified", False)
+    provider = user.get("provider", "google").capitalize()
+
+    v_badge = c("✔ Verified", Colors.BOLD + Colors.SUCCESS) if verified else c("○ Demo / Unverified", Colors.WARNING)
+
+    items = [
+        ("Account Name", name),
+        ("Email Address", email),
+        ("Status", f"Connected ({v_badge})"),
+        ("Identity Provider", f"{provider} Identity Services / OAuth 2.0"),
+    ]
+    if sub:
+        items.append(("Google Sub ID", sub[:24] + "..."))
+    if session_token:
+        items.append(("Session Token", session_token[:16] + "... (Active)"))
+
+    for label, val in items:
+        print(f"  {c(label.ljust(20) + ':', Colors.MUTED)} {c(str(val), Colors.BOLD + Colors.WHITE)}")
+    print()
+
+
+def render_local_status(scans: list[dict], active_model: str) -> None:
+    """Render local LLM servers inspection card."""
+    print("\n" + divider(label="LOCAL LLM LOOPBACK SERVERS") + "\n")
+    online_count = sum(1 for s in scans if s.get("online"))
+
+    for s in scans:
+        name = s.get("name", "Local Server")
+        ep = s.get("endpoint", "")
+        online = s.get("online", False)
+        lat = s.get("latency_ms")
+        models = s.get("models", [])
+
+        if online:
+            lat_str = f"{lat}ms" if lat is not None else "online"
+            print(f"  {c('✔', Colors.SUCCESS)} {c(name.ljust(18), Colors.BOLD + Colors.WHITE)} {c(ep.ljust(30), Colors.PRIMARY)} {c(f'[{lat_str}]', Colors.SUCCESS)}")
+            if models:
+                models_str = ", ".join(models[:4]) + (f" (+{len(models)-4} more)" if len(models) > 4 else "")
+                print(f"    {c('Models:', Colors.MUTED)} {c(models_str, Colors.WHITE)}")
+        else:
+            print(f"  {c('✖', Colors.ERROR)} {c(name.ljust(18), Colors.DIM)} {c(ep.ljust(30), Colors.MUTED)} {c('[Offline]', Colors.ERROR)}")
+
+    print(f"\n  {c('Active Model:', Colors.MUTED)} {c(active_model, Colors.BOLD + Colors.PRIMARY)}")
+    if online_count == 0:
+        print(f"  {c('Setup Tip:', Colors.WARNING)} Run {c('ollama serve', Colors.BOLD + Colors.WHITE)} and {c('ollama run qwen2.5:7b', Colors.BOLD + Colors.WHITE)} to enable on-premise inference.")
+    print()
 
 
 def render_doctor_report(diagnostics: dict) -> None:

@@ -30,7 +30,7 @@ from edith_cli.ui import (
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     settings = load_settings()
-    default_model = settings.get("model", "gemini-3.8-flash-high")
+    default_model = settings.get("model", "llama-3.2-3b-instruct")
     default_mode = settings.get("mode", "coding")
     default_effort = settings.get("effort", "high")
 
@@ -45,12 +45,18 @@ Examples:
   edith -p "Fix type error in api"   # Short alias for prompt execution
   edith -i "Run live audit"          # Run initial prompt then stay in interactive mode
   edith -m claude-sonnet-4-6         # Launch with specific intelligence model
+  edith --local "Analyze layout"     # Route execution to local LLM if available
   edith --mode plan "Design auth"    # Plan-only mode (no file mutations proposed)
   edith --effort max "Optimize DB"   # Deep reasoning effort
   edith -y "Create scripts/demo.py"  # Auto-approve proposal without interactive prompt
+  edith auth                         # View Google authentication status
+  edith login                        # Sign in with Google (OAuth or Demo)
+  edith logout                       # Revoke Google session credentials
+  edith whoami                       # Inspect Google account identity
+  edith local                        # Switch to local LLM or inspect loopback servers
   edith doctor                       # Run system diagnostics & verify audit chain
   edith status                       # Check Sovereign OS diagnostics & health
-  edith models                       # List all supported AI reasoning & coding models
+  edith models                       # List all supported AI reasoning, coding & local models
   edith audit                        # Inspect tamper-evident hash-chained audit log
   edith notes                        # Search notes in the Sovereign Knowledge Vault
   edith gateway start                # Start loopback gateway daemon in background
@@ -78,6 +84,16 @@ Examples:
         "-m", "--model",
         default=default_model,
         help=f"AI model to route execution to (default: {default_model})",
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Route execution to local LLM model (e.g. Ollama/LM Studio) if available",
+    )
+    parser.add_argument(
+        "--demo-login",
+        action="store_true",
+        help="Authenticate immediately using instant Google Developer demo profile",
     )
     parser.add_argument(
         "--mode",
@@ -287,7 +303,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     first_arg = prompt_tokens[0].strip().lower() if prompt_tokens else ""
     sub_args = " ".join(prompt_tokens[1:]).strip()
 
-    if first_arg in ("status", "models", "audit", "notes", "vault", "graph", "files", "doctor", "gateway"):
+    if first_arg in ("status", "models", "audit", "notes", "vault", "graph", "files", "doctor", "gateway", "auth", "login", "logout", "whoami", "local"):
         ok, msg = client.ensure_gateway(auto_start=True)
         if not ok:
             print(f"{c('Error:', Colors.ERROR)} Could not connect to Sovereign Gateway: {msg}", file=sys.stderr)
@@ -300,6 +316,18 @@ def main(argv: Optional[list[str]] = None) -> int:
             repl._cmd_models()
         elif first_arg == "doctor":
             repl._cmd_doctor()
+        elif first_arg == "auth":
+            mode_arg = "login --demo" if args.demo_login else sub_args
+            repl._cmd_auth(mode_arg)
+        elif first_arg == "login":
+            mode_arg = "--demo" if args.demo_login else sub_args
+            repl._cmd_login(mode_arg)
+        elif first_arg == "logout":
+            repl._cmd_logout()
+        elif first_arg == "whoami":
+            repl._cmd_whoami()
+        elif first_arg == "local":
+            repl._cmd_local(sub_args)
         elif first_arg == "audit":
             repl._cmd_audit(sub_args)
         elif first_arg in ("notes", "vault"):
@@ -311,6 +339,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         elif first_arg == "gateway":
             repl._cmd_gateway(sub_args)
         return 0
+
+    # Handle demo login flag if requested
+    if args.demo_login:
+        ok, msg = client.ensure_gateway(auto_start=True)
+        if ok:
+            client.login_google_demo()
+            print(c("  [Sovereign Developer Demo Session Initialized]", Colors.SUCCESS))
 
     # Determine prompt if any
     effective_prompt = args.flag_prompt or (" ".join(prompt_tokens).strip() if prompt_tokens else None)
@@ -326,11 +361,25 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
         spinner.stop("Sovereign Gateway Online", success=True)
 
+    # Resolve model (support --local switch)
+    effective_model = args.model
+    if args.local:
+        avail = client.get_available_local_models()
+        if avail:
+            effective_model = avail[0]
+            print(c(f"  [Switched to local model: {effective_model}]", Colors.WARNING))
+        else:
+            if effective_prompt:
+                print(c("✖ Error: No local LLM servers detected on loopback. Start Ollama ('ollama serve') or omit --local.", Colors.ERROR), file=sys.stderr)
+                return 1
+            else:
+                print(c("  [Warning: No local LLM servers detected on loopback. Falling back to default model.]", Colors.WARNING))
+
     # Interactive mode requested or no prompt given
     if not effective_prompt or args.interactive:
         repl = EdithREPL(
             client,
-            active_model=args.model,
+            active_model=effective_model,
             auto_approve=args.auto_approve,
             mode=args.mode,
             effort=args.effort,
@@ -342,7 +391,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return run_single_prompt(
         client=client,
         prompt=effective_prompt,
-        model=args.model,
+        model=effective_model,
         auto_approve=args.auto_approve,
         mode=args.mode,
         effort=args.effort,

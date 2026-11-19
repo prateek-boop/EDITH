@@ -37,7 +37,7 @@ def run_verification():
         "objective": goal,
         "sourceIds": ["README.md"],
         "kind": "coding",
-        "model": "gemini-3.8-flash-high"
+        "model": "llama-3.2-3b-instruct"
     })
     assert start_res.status_code == 202, f"Failed to submit job: {start_res.text}"
     job_id = start_res.json()["id"]

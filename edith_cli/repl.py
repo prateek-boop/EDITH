@@ -12,14 +12,17 @@ import datetime
 import os
 import re
 import readline
+import secrets
 import subprocess
 import sys
+import time
+import webbrowser
 from pathlib import Path
 from typing import Optional
 
 from edith_cli import __version__
 from edith_cli.client import GatewayClient
-from edith_cli.settings import get_setting, load_settings, set_setting
+from edith_cli.settings import get_setting, load_settings, set_local_endpoint, set_setting
 from edith_cli.ui import (
     Colors,
     Spinner,
@@ -28,9 +31,11 @@ from edith_cli.ui import (
     format_prompt,
     get_banner,
     render_approval_card,
+    render_auth_card,
     render_diff,
     render_doctor_report,
     render_event,
+    render_local_status,
     render_markdown,
     render_model_menu,
     render_shell_output,
@@ -44,6 +49,11 @@ class EdithREPL:
     SLASH_COMMANDS = [
         "/help",
         "/status",
+        "/auth",
+        "/login",
+        "/logout",
+        "/whoami",
+        "/local",
         "/model",
         "/models",
         "/mode",
@@ -75,7 +85,7 @@ class EdithREPL:
     ):
         self.client = client
         settings = load_settings()
-        self.active_model = active_model or settings.get("model", "gemini-3.8-flash-high")
+        self.active_model = active_model or settings.get("model", "llama-3.2-3b-instruct")
         self.mode = mode or settings.get("mode", "coding")
         self.effort = effort or settings.get("effort", "high")
         self.auto_approve = auto_approve or (self.mode == "auto")
@@ -160,9 +170,28 @@ class EdithREPL:
     # Main Interactive Loop
     # -------------------------------------------------------------------------
 
+    def _is_current_model_local(self) -> bool:
+        """Check if active model belongs to a local LLM provider."""
+        try:
+            avail_locals = self.client.get_available_local_models()
+            if self.active_model in avail_locals:
+                return True
+        except Exception:
+            pass
+        return any(tag in self.active_model.lower() for tag in ("qwen", "llama", "mistral", "deepseek", "local", "ollama", "phi"))
+
     def start(self, initial_prompt: Optional[str] = None) -> None:
         """Launch the interactive REPL shell."""
-        print(get_banner(version=__version__, model=self.active_model, status="ONLINE", mode=self.mode, effort=self.effort, workspace=str(self.workspace_root)))
+        print(get_banner(
+            version=__version__,
+            model=self.active_model,
+            status="ONLINE",
+            mode=self.mode,
+            effort=self.effort,
+            workspace=str(self.workspace_root),
+            auth_user=self.client.auth_user,
+            is_local_model=self._is_current_model_local(),
+        ))
         print(f" {c('Type your goal, or', Colors.MUTED)} {c('/help', Colors.BOLD + Colors.PRIMARY)} {c('for available slash commands. Prefix with ! to run shell commands.', Colors.MUTED)}\n")
 
         if initial_prompt:
@@ -431,6 +460,16 @@ class EdithREPL:
             self._cmd_help()
         elif command == "/status":
             self._cmd_status()
+        elif command == "/auth":
+            self._cmd_auth(args)
+        elif command == "/login":
+            self._cmd_login(args)
+        elif command == "/logout":
+            self._cmd_logout()
+        elif command == "/whoami":
+            self._cmd_whoami()
+        elif command == "/local":
+            self._cmd_local(args)
         elif command == "/model":
             self._cmd_model(args)
         elif command == "/models":
@@ -463,7 +502,16 @@ class EdithREPL:
             self._cmd_gateway(args)
         elif command == "/clear":
             os.system("clear" if os.name == "posix" else "cls")
-            print(get_banner(version=__version__, model=self.active_model, status="ONLINE", mode=self.mode, effort=self.effort, workspace=str(self.workspace_root)))
+            print(get_banner(
+                version=__version__,
+                model=self.active_model,
+                status="ONLINE",
+                mode=self.mode,
+                effort=self.effort,
+                workspace=str(self.workspace_root),
+                auth_user=self.client.auth_user,
+                is_local_model=self._is_current_model_local(),
+            ))
         elif command == "/paste":
             self._cmd_paste()
         else:
@@ -478,8 +526,13 @@ class EdithREPL:
         commands = [
             ("/help", "Display this help manual and shortcut guide"),
             ("/status", "Display Sovereign OS health, active model, and workspace metrics"),
+            ("/auth [status|login]", "Inspect or manage Google Identity authentication"),
+            ("/login [--demo|--browser]", "Sign in with Google (OAuth 2.0 Web Flow or Instant Demo)"),
+            ("/logout", "Sign out and revoke Google authentication session"),
+            ("/whoami", "Display authenticated Google identity and session token"),
+            ("/local [scan|endpoint]", "Switch to local LLMs (Ollama/LM Studio) if available"),
             ("/model [id|num]", "Interactive model selector or direct switch"),
-            ("/models", "List all available AI reasoning and coding models"),
+            ("/models", "List all available AI reasoning, coding, and local models"),
             ("/mode [coding|plan|auto]", "Switch execution mode (coding, architectural plan, auto-approve)"),
             ("/effort [low|med|high|max]", "Set neural reasoning effort depth"),
             ("/doctor", "Run comprehensive diagnostics & verify audit chain integrity"),
@@ -521,11 +574,31 @@ class EdithREPL:
             print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
             return
 
+        session_info = self.client.get_auth_session()
+        has_auth = session_info.get("ok") and session_info.get("user")
+        if has_auth:
+            u = session_info["user"]
+            v_tag = c("[Verified]", Colors.BOLD + Colors.SUCCESS) if u.get("verified") else c("[Demo]", Colors.WARNING)
+            auth_display = f"{u.get('name', 'Google User')} ({u.get('email', '')}) {v_tag}"
+        else:
+            auth_display = "Guest / Unauthenticated (Run /login to sign in)"
+
+        local_avail = self.client.get_available_local_models()
+        if local_avail:
+            local_display = f"Connected ({len(local_avail)} model{'s' if len(local_avail) > 1 else ''}: {', '.join(local_avail[:2])})"
+        else:
+            local_display = "Offline (Loopback probed · Run /local scan)"
+
+        is_cur_local = self._is_current_model_local()
+        engine_label = "Local LLM Inference Engine" if is_cur_local else health.get("engine", "EDITH Autonomous Core")
+
         print("\n" + divider(label="SOVEREIGN OS DIAGNOSTICS") + "\n")
         items = [
-            ("Sovereign Engine", health.get("engine", "EDITH Autonomous Core")),
+            ("Sovereign Engine", engine_label),
             ("Loopback Gateway", f"http://{self.client.host}:{self.client.port}"),
-            ("Active Model", self.active_model),
+            ("Google Identity", auth_display),
+            ("Local LLM Server", local_display),
+            ("Active Model", f"{self.active_model} {'[LOCAL]' if is_cur_local else '[CLOUD]'}"),
             ("Execution Mode", f"{self.mode.upper()} ({'Two-Phase Approval' if self.mode == 'coding' else ('Plan Only' if self.mode == 'plan' else 'Auto-Approve')})"),
             ("Reasoning Effort", self.effort),
             ("Vault Notes", f"{health.get('noteCount', 0)} notes indexed"),
@@ -549,10 +622,15 @@ class EdithREPL:
             return
 
         render_model_menu(models, self.active_model)
-        print(f"  {c('Switch model with:', Colors.MUTED)} {c('/model <id or number>', Colors.BOLD + Colors.PRIMARY)}\n")
+        print(f"  {c('Switch model with:', Colors.MUTED)} {c('/model <id or number>', Colors.BOLD + Colors.PRIMARY)} {c('or', Colors.MUTED)} {c('/local', Colors.BOLD + Colors.WARNING)} {c('to switch to local models', Colors.MUTED)}\n")
 
     def _cmd_model(self, target: str) -> None:
         """Switch active model directly or open interactive numbered picker."""
+        t_clean = target.strip().lower()
+        if t_clean in ("local", "ollama", "lmstudio"):
+            self._cmd_local("")
+            return
+
         spinner = Spinner("Fetching available models...").start()
         try:
             models = self.client.get_models()
@@ -570,6 +648,11 @@ class EdithREPL:
                 if mid and mid not in seen:
                     seen.add(mid)
                     ordered_ids.append(mid)
+            if m.get("provider") == "local-llm":
+                for mid in m.get("availableModels", []):
+                    if mid and mid not in seen:
+                        seen.add(mid)
+                        ordered_ids.append(mid)
 
         # If no argument, show interactive menu
         if not target:
@@ -920,3 +1003,274 @@ class EdithREPL:
         content = "\n".join(buffer).strip()
         if content:
             self.execute_goal(content)
+
+    # -------------------------------------------------------------------------
+    # Google Authentication Commands
+    # -------------------------------------------------------------------------
+
+    def _cmd_auth(self, args_str: str = "") -> None:
+        """Inspect, manage, or initiate Google Authentication."""
+        sub = args_str.strip().lower()
+        if not sub or sub == "status":
+            self._cmd_whoami()
+            return
+        if sub.startswith("login"):
+            sub_args = args_str.strip()[5:].strip()
+            self._cmd_login(sub_args)
+            return
+        if sub == "logout":
+            self._cmd_logout()
+            return
+        if sub in ("whoami", "user", "info"):
+            self._cmd_whoami()
+            return
+        print(f"  Usage: /auth [status|login|logout|whoami]\n")
+
+    def _cmd_whoami(self) -> None:
+        """Display the currently active Google user identity."""
+        spinner = Spinner("Verifying Google session...").start()
+        try:
+            res = self.client.get_auth_session()
+            spinner.stop()
+        except Exception as exc:
+            spinner.stop("Failed to verify session", success=False)
+            print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+            return
+
+        if res.get("ok") and res.get("user"):
+            render_auth_card(res["user"], self.client.session_token)
+            print(f"  {c('Session active.', Colors.SUCCESS)} Type {c('/logout', Colors.PRIMARY)} to sign out.\n")
+        else:
+            print("\n" + divider(label="GOOGLE IDENTITY AUTHENTICATION") + "\n")
+            print(f"  {c('Status:', Colors.MUTED)} {c('Unauthenticated (Guest Session)', Colors.WARNING)}")
+            print(f"  {c('Options:', Colors.MUTED)}")
+            print(f"    • {c('/login', Colors.BOLD + Colors.PRIMARY)}           : Interactive Google sign-in (OAuth or Instant Demo)")
+            print(f"    • {c('/login --demo', Colors.BOLD + Colors.PRIMARY)}    : Instant Google Developer profile")
+            print(f"    • {c('/login --browser', Colors.BOLD + Colors.PRIMARY)} : Launch Google OAuth in system browser\n")
+
+    def _cmd_login(self, args_str: str = "") -> None:
+        """Execute Google Authentication flow (Browser OAuth, Demo, or Token)."""
+        arg = args_str.strip().lower()
+
+        # Check if already authenticated
+        if not arg:
+            session = self.client.get_auth_session()
+            if session.get("ok") and session.get("user"):
+                u = session["user"]
+                print(f"\n  {c('Currently signed in as:', Colors.MUTED)} {c(u.get('name', 'User'), Colors.BOLD + Colors.WHITE)} ({c(u.get('email', ''), Colors.PRIMARY)})")
+                try:
+                    reauth = input(f"  {c('Do you want to re-authenticate or switch accounts? [y/N]:', Colors.BOLD + Colors.WHITE)} ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    print()
+                    return
+                if reauth not in ("y", "yes"):
+                    return
+
+        # Direct flags
+        if arg in ("--demo", "demo"):
+            self._do_demo_login()
+            return
+        if arg in ("--browser", "browser"):
+            self._do_browser_login()
+            return
+
+        # Interactive menu
+        print("\n" + divider(label="SIGN IN WITH GOOGLE") + "\n")
+        print(f"  {c('[1]', Colors.BOLD + Colors.PRIMARY)} Sign in via System Browser (Google OAuth 2.0 Web Flow)")
+        print(f"  {c('[2]', Colors.BOLD + Colors.PRIMARY)} Instant Google Sign-In (Demo Profile)")
+        print(f"  {c('[3]', Colors.BOLD + Colors.PRIMARY)} Enter Google OAuth2 ID Token manually")
+        print(f"  {c('[q]', Colors.MUTED)} Cancel\n")
+
+        try:
+            choice = input(f"  {c('Select option [1-3, q]:', Colors.BOLD + Colors.WHITE)} ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if choice == "1":
+            self._do_browser_login()
+        elif choice == "2":
+            self._do_demo_login()
+        elif choice == "3":
+            self._do_token_login()
+        elif choice in ("q", "quit", "cancel"):
+            print(c("  Authentication cancelled.\n", Colors.MUTED))
+        else:
+            print(c("  Invalid choice.\n", Colors.ERROR))
+
+    def _do_demo_login(self) -> None:
+        spinner = Spinner("Connecting instant Google Developer session...").start()
+        try:
+            res = self.client.login_google_demo()
+            spinner.stop("Google session initialized", success=True)
+            if res.get("ok") and res.get("user"):
+                render_auth_card(res["user"], res.get("sessionToken"))
+                print(f"  {c('✔ Signed in as:', Colors.SUCCESS)} {c(res['user'].get('email', 'developer@edith.dev'), Colors.BOLD + Colors.PRIMARY)}\n")
+            else:
+                print(f"  {c('Login failed:', Colors.ERROR)} {res.get('error', 'Unknown error')}\n")
+        except Exception as exc:
+            spinner.stop("Instant sign-in failed", success=False)
+            print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+
+    def _do_token_login(self) -> None:
+        try:
+            tok = input(f"  {c('Paste Google ID Token:', Colors.BOLD + Colors.WHITE)} ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if not tok:
+            print(c("  No token provided.\n", Colors.MUTED))
+            return
+
+        spinner = Spinner("Verifying Google credential with Sovereign Gateway...").start()
+        try:
+            res = self.client.login_google_credential(tok)
+            spinner.stop("Credential verified", success=True)
+            if res.get("ok") and res.get("user"):
+                render_auth_card(res["user"], res.get("sessionToken"))
+                print(f"  {c('✔ Successfully authenticated as:', Colors.SUCCESS)} {c(res['user'].get('email', ''), Colors.BOLD + Colors.PRIMARY)}\n")
+            else:
+                print(f"  {c('Verification failed:', Colors.ERROR)} {res.get('error', 'Invalid token')}\n")
+        except Exception as exc:
+            spinner.stop("Verification failed", success=False)
+            print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+
+    def _do_browser_login(self) -> None:
+        state = "edith_cli_" + secrets.token_hex(8)
+        start_url = self.client.get_google_auth_url(state)
+
+        print(f"\n  {c('Opening Google Sign-In in your default browser...', Colors.BOLD + Colors.PRIMARY)}")
+        print(f"  {c('If the browser does not open automatically, visit this URL:', Colors.MUTED)}")
+        print(f"  {c(start_url, Colors.UNDERLINE + Colors.SECONDARY)}\n")
+
+        try:
+            webbrowser.open(start_url)
+        except Exception:
+            pass
+
+        spinner = Spinner("Waiting for Google authorization in browser (timeout: 120s)...").start()
+        start_time = time.time()
+        poll_interval = 1.0
+
+        while time.time() - start_time < 120.0:
+            try:
+                res = self.client.poll_google_auth(state, timeout=poll_interval + 1.0)
+                if res.get("ok") and res.get("sessionToken"):
+                    user = res.get("user", {})
+                    self.client.save_auth_session(res["sessionToken"], user)
+                    spinner.stop("Google authentication completed", success=True)
+                    render_auth_card(user, res["sessionToken"])
+                    print(f"  {c('✔ Signed in as:', Colors.SUCCESS)} {c(user.get('email', 'Google User'), Colors.BOLD + Colors.PRIMARY)}\n")
+                    return
+            except Exception:
+                pass
+            time.sleep(poll_interval)
+
+        spinner.stop("Google authorization timed out (120s)", success=False)
+        print(c("  Authentication timed out. You can try again or use instant demo sign-in via /login --demo.\n", Colors.WARNING))
+
+    def _cmd_logout(self) -> None:
+        spinner = Spinner("Terminating Google session...").start()
+        try:
+            self.client.logout()
+            spinner.stop("Google session terminated", success=True)
+            print(f"\n  {c('✔ Logged out successfully.', Colors.SUCCESS)} Session credentials cleared.\n")
+        except Exception as exc:
+            spinner.stop("Logout error", success=False)
+            print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+
+    # -------------------------------------------------------------------------
+    # Local LLM Models Commands
+    # -------------------------------------------------------------------------
+
+    def _cmd_local(self, args_str: str = "") -> None:
+        """Inspect, probe, or switch to local loopback LLM models."""
+        sub = args_str.strip()
+
+        if sub == "scan" or sub == "probe":
+            spinner = Spinner("Probing loopback endpoints (Ollama, LM Studio, vLLM)...").start()
+            try:
+                scans = self.client.scan_local_endpoints()
+                spinner.stop()
+                render_local_status(scans, self.active_model)
+            except Exception as exc:
+                spinner.stop("Probe failed", success=False)
+                print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+            return
+
+        if sub.startswith("endpoint"):
+            parts = sub.split(maxsplit=1)
+            if len(parts) > 1:
+                ep = parts[1].strip()
+                set_local_endpoint(ep)
+                print(f"\n  {c('✔ Local endpoint updated to:', Colors.SUCCESS)} {c(ep, Colors.BOLD + Colors.PRIMARY)}")
+                print(c("  Probing new endpoint...", Colors.MUTED))
+                scans = self.client.scan_local_endpoints()
+                render_local_status(scans, self.active_model)
+            else:
+                settings = load_settings()
+                print(f"\n  {c('Configured Local Endpoint:', Colors.MUTED)} {c(settings.get('local_endpoint', 'http://127.0.0.1:11434/v1'), Colors.BOLD + Colors.PRIMARY)}")
+                print(f"  {c('Update with:', Colors.MUTED)} {c('/local endpoint <url>', Colors.PRIMARY)}\n")
+            return
+
+        if sub in ("off", "cloud", "reset"):
+            default_m = "llama-3.2-3b-instruct"
+            self.active_model = default_m
+            set_setting("model", default_m)
+            print(f"\n  {c('✔ Switched to Sovereign Core model:', Colors.SUCCESS)} {c(self.active_model, Colors.BOLD + Colors.PRIMARY)}\n")
+            return
+
+        # Check for available local models
+        spinner = Spinner("Checking for available local models...").start()
+        avail_locals = []
+        try:
+            avail_locals = self.client.get_available_local_models()
+            spinner.stop()
+        except Exception as exc:
+            spinner.stop("Failed to query models", success=False)
+            print(f"  {c('Error:', Colors.ERROR)} {exc}\n")
+            return
+
+        if not avail_locals:
+            print(f"\n  {c('✖ No local model servers currently available.', Colors.WARNING)}")
+            scans = self.client.scan_local_endpoints()
+            render_local_status(scans, self.active_model)
+            print(f"  {c('How to start a local model server:', Colors.BOLD + Colors.WHITE)}")
+            print(f"    1. Ollama:    Run {c('ollama serve', Colors.PRIMARY)} then {c('ollama run qwen2.5:7b', Colors.PRIMARY)}")
+            print(f"    2. LM Studio: Start Local Inference Server on port 1234")
+            print(f"    3. vLLM:      Launch with {c('python -m vllm.entrypoints.openai.api_server', Colors.PRIMARY)}\n")
+            print(f"  {c('To test connection:', Colors.MUTED)} Type {c('/local scan', Colors.PRIMARY)} or {c('/local endpoint <url>', Colors.PRIMARY)}\n")
+            return
+
+        # Target model matching
+        chosen = None
+        if sub:
+            matched = [m for m in avail_locals if sub.lower() in m.lower()]
+            if matched:
+                chosen = matched[0]
+            else:
+                chosen = sub
+        else:
+            if len(avail_locals) == 1:
+                chosen = avail_locals[0]
+            else:
+                print("\n" + divider(label="AVAILABLE LOCAL MODELS") + "\n")
+                for i, lm in enumerate(avail_locals, 1):
+                    is_cur = (lm == self.active_model)
+                    marker = c("●", Colors.SUCCESS) if is_cur else " "
+                    print(f"  [{i}] {marker} {c(lm, Colors.BOLD + Colors.WHITE)}")
+                print()
+                try:
+                    c_idx = input(f"  {c('Select local model [1-' + str(len(avail_locals)) + ']:', Colors.BOLD + Colors.WHITE)} ").strip()
+                    if c_idx.isdigit() and 1 <= int(c_idx) <= len(avail_locals):
+                        chosen = avail_locals[int(c_idx) - 1]
+                    else:
+                        chosen = avail_locals[0]
+                except (EOFError, KeyboardInterrupt):
+                    print()
+                    return
+
+        self.active_model = chosen
+        set_setting("model", chosen)
+        print(f"\n  {c('✔ Active model switched to local model:', Colors.SUCCESS)} {c(self.active_model, Colors.BOLD + Colors.PRIMARY)}")
+        print(f"  {c('Inference Mode:', Colors.MUTED)} {c('Numeric loopback HTTP · Air-gapped / Zero telemetry active.', Colors.SUCCESS)}\n")
